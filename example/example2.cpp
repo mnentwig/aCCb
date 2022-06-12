@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdexcept>
-#include "../aCCb/getFilesInDirectory.h"
+
+#include "../aCCb/getFilesInDirectory.hpp"
 using std::cout;
 using std::unordered_set;
 using std::string;

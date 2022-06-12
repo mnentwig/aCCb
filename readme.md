@@ -26,12 +26,32 @@ A simple benchmark on splitting a whole text file:
 * 6.5 ms "for loop", debug
 * 1.7 ms "for loop" -O3 -DNDEBUG. String duplication via "emplace" accounts for 1.3 ms.
 
-
 ## Unit tests
 * Option 1: "catch2" single-header framework. E.g. 40.4 s compile-/link time.
 * Option 2: "doctest" single-header framework. E.g. 11.4 s
 * Option 3: own minimal "aCCb" framework. E.g. 6.1 s 
 
-## Performance observations
+## Notes: Performance
 * not initializing a smatch before the regex had a measurable performance impact.
 * for vector<string>, the performance benefit of .emplace vs .push_back is clearly visible
+
+## Notes: Linker
+* a standalone function in a .hpp file needs to be marked 'static' or 'inline' to prevent "multiple definition" errors, when it gets exported from more than one object file.
+
+## Notes: std::map
+find an element:
+
+```
+auto it = this->keyNames.find(key);
+if (it != this->keyNames.end())
+	it->first / it->second; // key and value
+```
+## Notes: disable warning
+```
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter" 
+// (or -function)
+... code
+#pragma GCC diagnostic pop
+```
+

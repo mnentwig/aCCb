@@ -1,3 +1,4 @@
+
 #if 0
 #	define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #	include "../unitTestFrameworks/doctest.h"
@@ -11,10 +12,19 @@
 // (does nothing if doctest or catch2 are detected)
 #include "../aCCb/unitTestFramework.h"
 
-#include "../aCCb/getFilesInDirectory.h"
-#include "../aCCb/fileToString.h"
-#include "../aCCb/splitToLines.h"
-#include "../aCCb/stringToNum.h"
+#include "../aCCb/getFilesInDirectory.hpp"
+#include "../aCCb/fileToString.hpp"
+#include "../aCCb/splitToLines.hpp"
+#include "../aCCb/stringToNum.hpp"
+
+#if true
+// the tested libraries may have profiling enabled somewhere.
+// we need to provide a profiler object (otherwise linker error)
+// if profiling is not used anywhere, this can be omitted
+#include "../aCCb/profiler.hpp"
+aCCb::profiler gprof;
+#endif
+
 #include <set>
 #include <algorithm>
 using std::string;
