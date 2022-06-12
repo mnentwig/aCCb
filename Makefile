@@ -16,11 +16,11 @@ DEPS:= $(patsubst %.o,%.d,$(OBJS))
 
 # Eclipse passes debug/release build via this variable
 ifeq ($(BUILD_MODE),debug)
-	CFLAGS += -O0 -g -Wall
+	CFLAGS += -O0 -g -Wall -Wfatal-errors
 else ifeq ($(BUILD_MODE),run)
-	CFLAGS += -O3 -Wall -DNDEBUG
+	CFLAGS += -O3 -Wall -DNDEBUG -Wfatal-errors
 else
-	CFLAGS += -O0 -g -Wall
+	CFLAGS += -O0 -g -Wall -Wfatal-errors
 endif
 
 all:	example1.exe 

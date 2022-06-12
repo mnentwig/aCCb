@@ -57,7 +57,7 @@ public:
 			if (this->keyNames.find(key) == this->keyNames.end())
 				throw runtime_error("undeclared key: " + std::to_string(key));
 			string keyName = this->keyNames[key];
-			r += keyName + "\t" + std::to_string(t_us) + " us" << "\t" << std::to_string(t_ms) << " ms\n";
+			r += keyName + "\t" + std::to_string(t_us) + " us" + "\t" + std::to_string(t_ms) + " ms\n";
 		}
 		this->ticAcc.clear();
 		return r;

@@ -1,4 +1,3 @@
-#pragma once
 // this file selects an arbitrary feature set to be conveniently available
 // consider creating a project-specific copy.
 #include <iostream>

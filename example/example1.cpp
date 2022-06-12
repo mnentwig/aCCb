@@ -25,9 +25,9 @@ void example_setCustomComparer(bnDataset &d) {
 	auto itForw = namesForw.cbegin();
 	auto itForwEnd = namesForw.cend();
 	auto itRev = namesRev.crbegin();
-	auto itRevEnd = namesRev.crend();
-#ifndef NDEBUG
 	auto itRev2 = namesRev2.crbegin();
+#ifndef NDEBUG
+	auto itRevEnd = namesRev.crend();
 	auto itRev2End = namesRev2.crend();
 #endif
 	while (itForw != itForwEnd) {
