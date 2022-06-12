@@ -1,8 +1,10 @@
 # aCppCookbook
 ## Motivation
-I like modern (STL) C++ a lot but don't use it frequently enough to remember everything.
+I like modern (STL) C++ but don't use it frequently enough to remember everything.
 
 Looking the same things up again and again on Stackexchange gets tiresome, so I decided to collect the "basic building blocks" for copy-and-paste reuse. This selection is completely arbitrary, with no claims to completeness.
+
+Consider this "notes-to-self" that may or may not make much sense to someone else.
 
 ## Eclipse
 * Eclipse*s own build system makes it cumbersome to maintain a large number of executables in one project (need to manually set file exclusion for every toplevel .cpp file after adding a new toplevel file).
@@ -30,4 +32,6 @@ A simple benchmark on splitting a whole text file:
 * Option 2: "doctest" single-header framework. E.g. 11.4 s
 * Option 3: own minimal "aCCb" framework. E.g. 6.1 s 
 
-###### The smallest heading
+## Performance observations
+* not initializing a smatch before the regex had a measurable performance impact.
+* for vector<string>, the performance benefit of .emplace vs .push_back is clearly visible
