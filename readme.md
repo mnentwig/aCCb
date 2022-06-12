@@ -17,7 +17,7 @@ Consider this "notes-to-self" that may or may not make much sense to someone els
 
 * The Eclipse console seems unreliable: In some cases, output to stderr immediately before exit() was missing despite being flushed with std::endl.
 
-* Breakpoint on thrown exceptions: Debug view, "..." button ("View menu"), "Add event breakpoint (C/C++)", select "exception thrown". Some exceptions e.g. from "std::stoi" are not caught (but "catch throw" to gdb in the "Debugger console" gives the same result. Wrapping 
+* Breakpoint on thrown exceptions: Debug view, "..." button ("View menu"), "Add event breakpoint (C/C++)", select "exception thrown". Some exceptions e.g. from "std::stoi" are not caught (but "catch throw" to gdb in the "Debugger console" gives the same result (unstandardized binary interface)? If needed, catch and re-throw from own code, then the debugger will detect it.
 
 ## benchmark
 A simple benchmark on splitting a whole text file:
