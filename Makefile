@@ -10,7 +10,7 @@ PROJECT_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # shared objects are listed here. 
 # As source files are scattered across multiple folders, we need the  
-OBJS = example/bnDataset.o example/example1.o example/unitTests.o
+OBJS = example/bnDataset.o example/example1.o example/example2.o example/unitTests.o
 # resulting .d files (for cleaning)
 DEPS:= $(patsubst %.o,%.d,$(OBJS))
 
@@ -23,7 +23,7 @@ else
 	CFLAGS += -O0 -g -Wall -Wfatal-errors
 endif
 
-all:	example1.exe 
+all:	example1.exe example2.exe
 #unitTests.exe
 
 # include generated rules that state dependencies (list of #include files per object)
@@ -32,10 +32,12 @@ all:	example1.exe
 # Flags for dependency extraction into *.d file for every object target
 DEPEXTR_FLAGS = -MMD -MF $(@:.o=.d)
 
-# rules to build toplevel executables
+# rules to build toplevel executables. 
+# Note: All object files must be added to DEPS (otherwise failure to recompile on header change!) 
 example1.exe:	example/example1.o example/bnDataset.o
 	$(CXX) $(LDFLAGS) -o $@ $^
-
+example2.exe:	example/example2.o
+	$(CXX) $(LDFLAGS) -o $@ $^
 unitTests.exe:	example/unitTests.o  example/bnDataset.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 

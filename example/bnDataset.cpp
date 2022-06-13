@@ -6,6 +6,7 @@
 #include "../aCCb/profiler.hpp"
 #include "../aCCb/splitToLines.hpp"
 #include "../aCCb/stringToNum.hpp"
+#include "../aCCb/multithreadDispatcher.hpp"
 #include <thread>
 #include <future>
 #include <chrono>
@@ -14,7 +15,7 @@ int objCppExampleForMakefile() {
 	return 42;
 }
 
-template<class T> void vecappend(T& a, const T& b) {
+template<class T> void vecappend(T &a, const T &b) {
 	a.insert(a.end(), b.cbegin(), b.cend());
 }
 
@@ -103,6 +104,8 @@ bnDataset::bnDataset(const string directory) {
 	/* keep path in results */true);
 
 #if false
+	// === single-threaded reference implementation ===
+	// some profiler demo
 	DECLARE(1001, "load");
 	DECLARE(1002, "append");
 	for (auto it : files) {
@@ -114,51 +117,11 @@ bnDataset::bnDataset(const string directory) {
 		TOC(1002);
 	}
 #else
-	auto loaderFun = [](string filename) {
-		bnDataset dFile = loadOneFile(filename);
-		return dFile;
-	};
-
-	auto itFiles = files.cbegin();
-	auto itFilesEnd = files.cend();
-	bool cont = true; // clear when the last worker has returned
-
-	typedef std::future<bnDataset> future_t;
-	vector<future_t> threads;
-	int nThreadsRemaining = 8;
-	bool allJobsStarted = (itFiles == itFilesEnd);
-	while (cont) {
-		// === part 1 ===
-		// start workers until all jobs are assigned or we run out of workers
-		while (!allJobsStarted && nThreadsRemaining) {
-			string filename = *itFiles;
-			threads.push_back(std::async(loaderFun, filename));
-			--nThreadsRemaining;
-			++itFiles;
-			allJobsStarted = (itFiles == itFilesEnd);
-		}
-
-		// === part 2 ===
-		// start workers until all jobs are assigned or we run out of workers
-		int waittime_ms = 0;
-		while (cont && ((nThreadsRemaining == 0) || allJobsStarted)) {
-			auto it2 = threads.begin();
-			while (it2 != threads.end()) {
-				if ((*it2).wait_for(std::chrono::milliseconds(waittime_ms)) == std::future_status::ready) {
-					this->append((*it2).get());
-
-					it2 = threads.erase(it2);
-					++nThreadsRemaining;
-					bool allDone = threads.size() == 0;
-					if (allJobsStarted && allDone)
-						cont = false;
-				} else {
-					++it2;
-				}
-			}
-			// if no thread has been released, continue checking the workers but don't spinlock the CPU.
-			waittime_ms = 1;
-		}
+	// === multithreaded ===
+	vector<string> fn2(files.begin(), files.end());
+	vector<bnDataset> res = aCCb::multithreadDispatcher(fn2, &loadOneFile);
+	for (auto d : res) {
+		this->append(d);
 	}
 #endif
 	cout << std::to_string(this->name.size()) << "\n" << std::flush;

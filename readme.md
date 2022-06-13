@@ -55,3 +55,25 @@ if (it != this->keyNames.end())
 #pragma GCC diagnostic pop
 ```
 
+## Notes: std::vector
+delete element k: This works, because vector has random-access iterators
+
+```
+vec.erase(vec.begin() + k);
+```
+
+## Notes: unordered
+* std::iota(v.begin(), v.end(), startval) <numeric> fill with increasing numbers // iota refers to greek letter
+* std::next_permutation(v.begin(), v.end()) <algorithm> swaps elements and returns true unless elements are sorted
+
+## Notes: Multithreading
+aCCb::MultithreadDispatcher shows a very straightforward multithreading pattern with std::async and std::future. 
+A more sophisticated threadpool library is usually (but not always!) faster, see "BS_Thread_Pool.hpp" in "3rdParty".
+* Both throw exceptions into the original thread.
+* The std::async pattern stalls at > 100k pending jobs.
+* Note that std::async does not allow arguments to be passed by reference. Reportedly, std::ref() is dangerous.
+
+## Useful 3rd party libraries (open source, single file)
+* https://github.com/bshoshany/thread-pool Barak Shoshany, "A C++17 Thread Pool for High-Performance Scientific Computing"
+* https://github.com/doctest Viktor Kirilov and contributors
+* https://github.com/catchorg/Catch2 Martin Hořeňovský and contributors
