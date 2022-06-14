@@ -77,3 +77,10 @@ A more sophisticated threadpool library is usually (but not always!) faster, see
 * https://github.com/bshoshany/thread-pool Barak Shoshany, "A C++17 Thread Pool for High-Performance Scientific Computing"
 * https://github.com/doctest Viktor Kirilov and contributors
 * https://github.com/catchorg/Catch2 Martin Hořeňovský and contributors
+
+## Notes: Warnings
+* -Wall
+* -Wfatal-errors: Stops at first error (console is easier to read)
+* -Wextra 
+* -Wpedantic  
+* -Weffc++ 

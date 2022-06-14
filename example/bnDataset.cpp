@@ -92,12 +92,14 @@ static bnDataset loadOneFile(const string filename) {
 	return retVal;
 }
 
-bnDataset::bnDataset() {
+bnDataset::bnDataset() :
+		name(), mf(), count(), year() {
 }
 #include <list>
-bnDataset::bnDataset(const string directory) {
+bnDataset::bnDataset(const string directory) :
+		name(), mf(), count(), year() {
 	const regex r("^.*txt$");
-	unordered_set<string> files = aCCb::getFilesInDirectory("sampledataHistoricalBabynames",
+	unordered_set<string> files = aCCb::getFilesInDirectory(directory,
 	/* regex */r,
 	/* include files */true,
 	/* include directories */false,

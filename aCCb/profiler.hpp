@@ -26,7 +26,8 @@ class profiler {
 		timepoint_t timestamp;
 	};
 public:
-	profiler() {
+	profiler() :
+			ticAcc(), ticStack(), keyNames() {
 	}
 	void tic(int key) {
 		timepoint_t tNow = std::chrono::high_resolution_clock::now();
