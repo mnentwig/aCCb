@@ -69,7 +69,7 @@ vec.erase(vec.begin() + k);
 ## Notes: Multithreading
 aCCb::MultithreadDispatcher shows a very straightforward multithreading pattern with std::async and std::future. 
 A more sophisticated threadpool library is usually (but not always!) faster, see "BS_Thread_Pool.hpp" in "3rdParty".
-* Both throw exceptions into the original thread.
+* Both throw exceptions into the original thread at "get()" called on the future.
 * The std::async pattern stalls at > 100k pending jobs.
 * Note that std::async does not allow arguments to be passed by reference. Reportedly, std::ref() is dangerous.
 
