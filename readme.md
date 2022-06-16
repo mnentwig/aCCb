@@ -84,3 +84,8 @@ A more sophisticated threadpool library is usually (but not always!) faster, see
 * -Wextra 
 * -Wpedantic  
 * -Weffc++ 
+
+## Notes: Memory model
+* By default, variable reads and writes ('loads and stores') can be re-ordered arbitrarily
+* std::atomic<supportedType> x; x.store(val) and x.load(val) prevents reordering across the instruction (fence/barrier)
+* default 2nd arg std::memory_order_seq_cst is the most expensive
