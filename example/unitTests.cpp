@@ -1,4 +1,3 @@
-
 #if 0
 #	define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #	include "../unitTestFrameworks/doctest.h"
@@ -17,6 +16,8 @@
 #include "../aCCb/splitToLines.hpp"
 #include "../aCCb/stringToNum.hpp"
 
+#include "../aCCb/vec2binfile2vec.hpp"
+
 #if true
 // the tested libraries may have profiling enabled somewhere.
 // we need to provide a profiler object (otherwise linker error)
@@ -27,6 +28,7 @@ aCCb::profiler gprof;
 
 #include <set>
 #include <algorithm>
+#include <numeric> // iota
 using std::string;
 using std::regex;
 using std::unordered_set;
@@ -101,9 +103,37 @@ bool testSplitToLines() {
 	return (linesA == linesB);
 }
 
+bool testVec2binfile2vec() {
+	vector<uint8_t> testvec8(256);
+	vector<uint16_t> testvec16(1000);
+	vector<uint32_t> testvec32(1000);
+	vector<uint64_t> testvec64(1000);
+
+	std::iota(testvec8.begin(), testvec8.end(), 0);
+	std::iota(testvec16.begin(), testvec16.end(), 0);
+	std::iota(testvec32.begin(), testvec32.end(), 0);
+	std::iota(testvec64.begin(), testvec64.end(), 0);
+	const string fname("testfile.bin");
+
+	bool pass = true;
+
+	aCCb::vec2binfile(fname, testvec8);
+	pass &= (aCCb::binfile2vec<uint8_t>(fname) == testvec8);
+
+	aCCb::vec2binfile(fname, testvec16);
+	pass &= (aCCb::binfile2vec<uint16_t>(fname) == testvec16);
+
+	aCCb::vec2binfile(fname, testvec32);
+	pass &= (aCCb::binfile2vec<uint32_t>(fname) == testvec32);
+
+	aCCb::vec2binfile(fname, testvec64);
+	pass &= (aCCb::binfile2vec<uint64_t>(fname) == testvec64);
+
+	return pass;
+}
+
 TEST_START
 	TEST_CASE("aCCb::stoi") {
-		//try {} catch (std::exception & e){}
 		REQUIRE(aCCb::stoi("123") == 123);
 		REQUIRE(aCCb::stoi("-10") == -10);
 		CHECK_THROWS_WITH(aCCb::stoi("0xFFFF"), "conversion string to number failed");
@@ -124,4 +154,8 @@ TEST_START
 		REQUIRE(testSplitToLines() == true);
 	}
 
-TEST_END
+	TEST_CASE("vec2binfile2vec") {
+		REQUIRE(testVec2binfile2vec());
+	}
+
+	TEST_END

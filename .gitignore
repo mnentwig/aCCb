@@ -2,3 +2,5 @@ build
 .cproject
 .project
 .settings
+example/.sc*.cpp
+testfile.bin
