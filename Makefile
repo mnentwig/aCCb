@@ -14,7 +14,7 @@ OBJS = example/bnDataset.o example/example1.o example/example2.o example/unitTes
 # resulting .d files (for cleaning)
 DEPS:= $(patsubst %.o,%.d,$(OBJS))
 
-MY_BUILDFLAGS = -Wall -Wfatal-errors -Wextra -Wpedantic  -Weffc++ 
+MY_BUILDFLAGS = -std=c++17 -Wall -Wfatal-errors -Wextra -Wpedantic  -Weffc++ 
 #-Wconversion 
 #-Wsign-conversion -Weffc++ -Wshadow
 # Eclipse passes debug/release build via this variable
@@ -26,8 +26,7 @@ else
 	CFLAGS += -O0 -g ${MY_BUILDFLAGS}
 endif
 
-all:	example1.exe example2.exe
-#unitTests.exe
+all:	example1.exe example2.exe unitTests.exe
 
 # include generated rules that state dependencies (list of #include files per object)
 -include $(DEPS)

@@ -1,5 +1,6 @@
 # aCppCookbook
 ## Motivation
+Collection of reusable code snippets to reduce the amount of my future quick-and-dirty perl/Octave/
 I like modern (STL) C++ but don't use it frequently enough to remember everything.
 
 Looking the same things up again and again on Stackexchange gets tiresome, so I decided to collect the "basic building blocks" for copy-and-paste reuse. This selection is completely arbitrary, with no claims to completeness.
@@ -36,7 +37,9 @@ A simple benchmark on splitting a whole text file:
 * for vector<string>, the performance benefit of .emplace vs .push_back is clearly visible
 
 ## Notes: Linker
-* a standalone function in a .hpp file needs to be marked 'static' or 'inline' to prevent "multiple definition" errors, when it gets exported from more than one object file.
+* writing code in .hpp files instead of .h/.cpp is usually quicker to code
+* design decision to replicate code instead of reusing some (non-template) shared object code 
+* a standalone functions need to be marked 'static' or 'inline' to prevent "multiple definition" errors, as #including the header would by default export it from any object file.
 
 ## Notes: std::map
 find an element:
@@ -89,3 +92,22 @@ A more sophisticated threadpool library is usually (but not always!) faster, see
 * By default, variable reads and writes ('loads and stores') can be re-ordered arbitrarily
 * std::atomic<supportedType> x; x.store(val) and x.load(val) prevents reordering across the instruction (fence/barrier)
 * default 2nd arg std::memory_order_seq_cst is the most expensive
+
+## Notes: language level
+* C++11: __cplusplus is 201103L
+* C++14: __cplusplus is 201402L
+* C++17: __cplusplus is 201703L
+* C++20: __cplusplus is 202002L
+
+## Notes: Namespace
+* Convention: Hide private functions in nested "details" namespace (or "Private" etc)
+* Use descriptive, long namespace text, then create convenience alias e.g. namespace li = aCCb::logicalIndexing;
+
+## Notes: Templates
+* "Full" template specialization with template<> is broken (error: 'only at namespace scope'). 
+However, implementing a conventional (non-template) function with the correct signature besides the template works.
+
+* Overload on return type can be emulated by returning a proxy object that performs the switch by overloading its cast operator:
+```
+inline proxyClass::operator theTargetType() const {...}
+```
