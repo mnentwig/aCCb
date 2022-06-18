@@ -1,21 +1,42 @@
 #include <vector>
 #include <numeric> // iota
 #include <string>
-#include "aCCb/vec2binfile2vec.hpp"
+#include <cassert>
+#include "../aCCb/vec2binfile2vec.hpp"
+#include <iostream>
 using std::vector;
 using std::string;
 
 #include <streambuf>
 #include <istream>
 struct membuf: std::streambuf {
-	membuf(char const *base, size_t size) {
-		char *p(const_cast<char*>(base));
-		this->setg(p, p, p + size);
+	membuf(char *base, size_t size) :
+			begin(base) {
+		this->end = base + size;
+		this->setg(this->begin, this->begin, this->end);
+	}
+	char *begin;
+	char *end;
+	virtual std::ios::pos_type seekoff(std::ios::off_type off, std::ios_base::seekdir dir, std::ios_base::openmode /*which = std::ios_base::in*/) override
+	{
+		if (dir == std::ios_base::cur)
+			gbump(off);
+		else if (dir == std::ios_base::end)
+			setg(begin, end + off, end);
+		else if (dir == std::ios_base::beg)
+			setg(begin, begin + off, end);
+
+		return gptr() - eback();
+	}
+
+	virtual std::ios::pos_type seekpos(std::streampos pos, std::ios_base::openmode mode) override
+	{
+		return seekoff(pos - pos_type(off_type(0)), std::ios_base::beg, mode);
 	}
 };
 struct imemstream: virtual membuf, std::istream {
 	imemstream(char const *base, size_t size) :
-			membuf(base, size), std::istream(static_cast<std::streambuf*>(this)) {
+			membuf(const_cast<char*>(base), size), std::istream(static_cast<std::streambuf*>(this)) {
 	}
 };
 int main() {
@@ -29,6 +50,8 @@ int main() {
 	// === write to file ===
 	aCCb::vec2binfile(myFname, vecA);
 
-	imemstream((char*)&vecA[0], vecA.size());
-
+	imemstream is((char*) &vecA[0], vecA.size() * sizeof(vecA[0]));
+	vector<uint64_t> vecB = aCCb::binfile2vec2<uint64_t>(is);
+	assert(vecA == vecB);
+	std::cout << "done\n" << std::flush;
 }

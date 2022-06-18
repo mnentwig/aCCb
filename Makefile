@@ -10,7 +10,7 @@ PROJECT_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # shared objects are listed here. 
 # As source files are scattered across multiple folders, we need the  
-OBJS = example/bnDataset.o example/example1.o example/example2.o example/unitTests.o
+OBJS = example/bnDataset.o example/example1.o example/example2.o example/unitTests.o example/example_istreamFromMem.o
 # resulting .d files (for cleaning)
 DEPS:= $(patsubst %.o,%.d,$(OBJS))
 
@@ -26,7 +26,7 @@ else
 	CFLAGS += -O0 -g ${MY_BUILDFLAGS}
 endif
 
-all:	example1.exe example2.exe unitTests.exe
+all:	example1.exe example2.exe unitTests.exe example_istreamFromMem.exe
 
 # include generated rules that state dependencies (list of #include files per object)
 -include $(DEPS)
@@ -39,6 +39,8 @@ DEPEXTR_FLAGS = -MMD -MF $(@:.o=.d)
 example1.exe:	example/example1.o example/bnDataset.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 example2.exe:	example/example2.o
+	$(CXX) $(LDFLAGS) -o $@ $^
+example_istreamFromMem.exe:	example/example_istreamFromMem.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 unitTests.exe:	example/unitTests.o  example/bnDataset.o
 	$(CXX) $(LDFLAGS) -o $@ $^
