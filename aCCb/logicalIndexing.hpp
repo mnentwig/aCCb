@@ -2,18 +2,15 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <algorithm> // std::count
 namespace aCCb {
 using std::vector;
 using std::unordered_map;
 using std::string;
+using std::runtime_error;
 
 namespace logicalIndexing {
 namespace details {
-
-/** returns number of true elements in indexOp */
-size_t popcount(const vector<bool> &indexOp) {
-	return std::count(indexOp.cbegin(), indexOp.cend(), true); // should ideally use popcnt intrinsic (reportedly, the C++ 20 implementation does)
-}
 
 /** picks data elements identified by indexOp, knowing the number of output elements */
 template<class T> vector<T> applyIndexKnownPopcount_vector(const vector<T> &data, const vector<bool> &indexOp, size_t popcount) {
@@ -45,11 +42,16 @@ template<class T> vector<T>& getFieldOrThrow(unordered_map<string, vector<T>> &d
 
 } // NS: logicalIndexing::details
 
+/** returns number of true elements in indexOp */
+size_t popcount(const vector<bool> &indexOp) {
+	return std::count(indexOp.cbegin(), indexOp.cend(), true); // should ideally use popcnt intrinsic (reportedly, the C++ 20 implementation does)
+}
+
 // =======================================================================================
 
 /** helper function: logical indexing on vector knowing the result size */
 template<class T> vector<T> applyIndex(const vector<T> &data, const vector<bool> &indexOp) {
-	return details::applyIndexKnownPopcount_vector<T>(data, indexOp, details::popcount(indexOp));
+	return details::applyIndexKnownPopcount_vector<T>(data, indexOp, popcount(indexOp));
 }
 
 /** generates logical indexing vector by evaluating expr with data */
@@ -63,11 +65,11 @@ template<class T> vector<bool> generateIndex(const vector<T> data, bool (*expr)(
 
 /** picks data elements identified by indexOp for each value of the map*/
 template<class T, class tKey> unordered_map<tKey, vector<T>> applyIndexMap(const unordered_map<tKey, vector<T>> &data, const vector<bool> &indexOp) {
-	size_t popcount = details::popcount(indexOp);
+	size_t popcnt = popcount(indexOp);
 	unordered_map<tKey, vector<T>> retVal;
 	assert(data.size() != indexOp.size());
 	for (auto itData : data)
-		retVal[itData.first] = details::applyIndexKnownPopcount_map(itData.second, indexOp, popcount);
+		retVal[itData.first] = details::applyIndexKnownPopcount_map(itData.second, indexOp, popcnt);
 	return retVal;
 }
 
@@ -108,7 +110,7 @@ public:
 	/** picks data elements identified by indexOp for all vectors in all maps */
 	vecMap applyIndex(vector<bool> &indexOp) {
 		vecMap retVal;
-		retVal.nElem = details::popcount(indexOp);
+		retVal.nElem = popcount(indexOp);
 		retVal.data_float = details::applyIndexKnownPopcount_map(this->data_float, indexOp, retVal.nElem);
 		retVal.data_double = details::applyIndexKnownPopcount_map(this->data_double, indexOp, retVal.nElem);
 		retVal.data_bool = details::applyIndexKnownPopcount_map(this->data_bool, indexOp, retVal.nElem);

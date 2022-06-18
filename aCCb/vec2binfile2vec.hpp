@@ -3,24 +3,80 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include "../aCCb/logicalIndexing.hpp"
+namespace li = aCCb::logicalIndexing;
+
 namespace aCCb {
 using std::string;
 using std::vector;
 using std::fstream;
 using std::ifstream;
 using std::runtime_error;
-template<class T> std::vector<T> binfile2vec2(std::istream &is) {
+
+inline size_t binfileGetNElem(std::istream &is, size_t elemSize) {
 	is.seekg(0, std::ios_base::end);
-	std::size_t size_bytes = is.tellg();
-	size_t nElements = size_bytes / sizeof(T);
-	if (nElements * sizeof(T) != size_bytes)
+	std::size_t nBytes = is.tellg();
+	size_t nElem = nBytes / elemSize;
+	if (nElem * elemSize != nBytes)
 		throw runtime_error("file contains partial element");
+	return nElem;
+}
+
+template<class T> std::vector<T> binfile2vec2(std::istream &is) {
+	size_t nElem = binfileGetNElem(is, sizeof(T));
 	is.seekg(0, std::ios_base::beg);
-	vector<T> retVal(nElements);
-	is.read((char*) &retVal[0], size_bytes);
+	vector<T> retVal(nElem);
+	is.read((char*) &retVal[0], nElem * sizeof(T));
 	if (!is)
 		throw runtime_error("read failed");
 	return retVal;
+}
+
+template<class T> std::vector<T> binfile2vec2(std::istream &is, std::vector<bool> indexOp) {
+	size_t nElem = binfileGetNElem(is, sizeof(T));
+	if (nElem != indexOp.size())
+		throw runtime_error("size mismatch is vs indexOp");
+
+	// === reserve memory ===
+	size_t popcnt = li::popcount(indexOp);
+	vector<T> retVal(popcnt);
+
+	// === main loop ===
+	auto itIndex = indexOp.cbegin();
+	const auto itIndexEnd = indexOp.cend();
+	size_t streamBytePos = 0;
+	size_t nElemToRead = 0;
+	size_t ixRead = 0;
+	while (itIndex != itIndexEnd) {
+		// === count consecutive true ===
+		while ((itIndex != itIndexEnd) && *itIndex) {
+			++nElemToRead;
+			++itIndex;
+		}
+
+		// === read contiguous elements ===
+		if (nElemToRead) {
+			size_t nBytesToRead = nElemToRead * sizeof(T);
+			is.seekg(streamBytePos, std::ios_base::beg);
+			if (!is)
+				throw runtime_error("seekg() failed");
+			is.read((char*) &retVal[ixRead], nBytesToRead);
+			if (!is)
+				throw runtime_error("read() failed");
+			ixRead += nElemToRead;
+			streamBytePos += nBytesToRead;
+		}
+
+		// === done? (optimization for trailing false) ===
+		if (popcnt == ixRead)
+			break;
+
+		// === skip consecutive false ===
+		while ((itIndex != itIndexEnd) && !*itIndex) {
+			streamBytePos += sizeof(T);
+			++itIndex;
+		}
+	}
 }
 
 template<class T> std::vector<T> binfile2vec(const string fname) {

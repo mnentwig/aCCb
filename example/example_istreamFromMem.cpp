@@ -10,9 +10,12 @@ using std::string;
 #include <streambuf>
 #include <istream>
 struct membuf: std::streambuf {
+	// prevent copying (also gets rid of -Weffc++ warnings)
+	membuf(const membuf&) = delete;
+	membuf& operator=(const membuf&) = delete;
+
 	membuf(char *base, size_t size) :
-			begin(base) {
-		this->end = base + size;
+			begin(base), end(base + size) {
 		this->setg(this->begin, this->begin, this->end);
 	}
 	char *begin;
