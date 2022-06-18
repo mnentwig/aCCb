@@ -168,8 +168,7 @@ bool testLogicalIndexing() {
 	pass &= li::popcount(li::logicalAnd(indexOp1, indexOp2)) == v.size() / 2 - 5;
 
 	// === binary file read with indexOp ===
-	//pass &= aCCb::binfile2vec<uint32_t>(fname, indexOp1Neg) == li::applyIndex(v, indexOp1Neg);
-
+	pass &= aCCb::binfile2vec<uint32_t>(fname, indexOp1Neg) == li::applyIndex(v, indexOp1Neg);
 
 	return pass;
 }
@@ -204,4 +203,4 @@ TEST_START
 		REQUIRE(testLogicalIndexing());
 	}
 
-	TEST_END
+TEST_END

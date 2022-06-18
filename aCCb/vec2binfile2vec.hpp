@@ -31,7 +31,6 @@ template<class T> std::vector<T> binfile2vec2(std::istream &is) {
 		throw runtime_error("read failed");
 	return retVal;
 }
-
 template<class T> std::vector<T> binfile2vec2(std::istream &is, std::vector<bool> indexOp) {
 	size_t nElem = binfileGetNElem(is, sizeof(T));
 	if (nElem != indexOp.size())
@@ -45,10 +44,16 @@ template<class T> std::vector<T> binfile2vec2(std::istream &is, std::vector<bool
 	auto itIndex = indexOp.cbegin();
 	const auto itIndexEnd = indexOp.cend();
 	size_t streamBytePos = 0;
-	size_t nElemToRead = 0;
 	size_t ixRead = 0;
 	while (itIndex != itIndexEnd) {
+		// === skip consecutive false ===
+		while ((itIndex != itIndexEnd) && !*itIndex) {
+			streamBytePos += sizeof(T);
+			++itIndex;
+		}
+
 		// === count consecutive true ===
+		size_t nElemToRead = 0;
 		while ((itIndex != itIndexEnd) && *itIndex) {
 			++nElemToRead;
 			++itIndex;
@@ -70,12 +75,6 @@ template<class T> std::vector<T> binfile2vec2(std::istream &is, std::vector<bool
 		// === done? (optimization for trailing false) ===
 		if (popcnt == ixRead)
 			break;
-
-		// === skip consecutive false ===
-		while ((itIndex != itIndexEnd) && !*itIndex) {
-			streamBytePos += sizeof(T);
-			++itIndex;
-		}
 	}
 	return retVal;
 }

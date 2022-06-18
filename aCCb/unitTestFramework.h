@@ -10,9 +10,21 @@
 #endif
 #include <iostream>
 // main function opens
-#define TEST_START int main() {
+#define TEST_START void main2() {
 // main function closes
-#define TEST_END std::cout << "all unit tests passed\n" << std::flush;}
+#define TEST_END 															\
+} /* void main2() */														\
+int main() {																\
+	try {																	\
+		main2();															\
+	} catch (std::exception &e) {											\
+		std::cerr << "exception:" << e.what() << "\n" << std::flush;		\
+		return 1;															\
+	}																		\
+	std::cout << "all unit tests passed\n" << std::flush;					\
+	return /*EXIT_SUCCESS*/0;												\
+} /* int main() */
+
 // === standard feature TEST_CASE ===
 // (do nothing, must be wrapped byu TEST_START ... TEST_END
 #define TEST_CASE(a)
