@@ -2,7 +2,8 @@
 #include <numeric> // iota
 #include <string>
 #include <cassert>
-#include "../aCCb/vec2binfile2vec.hpp"
+#include "../aCCb/binIo.hpp"
+namespace binIo = aCCb::binaryIo;
 #include <iostream>
 using std::vector;
 using std::string;
@@ -51,10 +52,10 @@ int main() {
 	std::iota(vecA.begin(), vecA.end(), 0);
 
 	// === write to file ===
-	aCCb::vec2binfile(myFname, vecA);
+	binIo::vec2file(myFname, vecA);
 
 	imemstream is((char*) &vecA[0], vecA.size() * sizeof(vecA[0]));
-	vector<uint64_t> vecB = aCCb::binfile2vec2<uint64_t>(is);
+	vector<uint64_t> vecB = binIo::stream2vec<uint64_t>(is);
 	assert(vecA == vecB);
 	std::cout << "done\n" << std::flush;
 }

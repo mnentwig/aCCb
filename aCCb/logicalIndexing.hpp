@@ -43,7 +43,7 @@ template<class T> vector<T>& getFieldOrThrow(unordered_map<string, vector<T>> &d
 } // NS: logicalIndexing::details
 
 /** returns number of true elements in indexOp */
-size_t popcount(const vector<bool> &indexOp) {
+inline size_t popcount(const vector<bool> &indexOp) {
 	return std::count(indexOp.cbegin(), indexOp.cend(), true); // should ideally use popcnt intrinsic (reportedly, the C++ 20 implementation does)
 }
 

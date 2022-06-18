@@ -16,8 +16,11 @@
 #include "../aCCb/splitToLines.hpp"
 #include "../aCCb/stringToNum.hpp"
 
-#include "../aCCb/vec2binfile2vec.hpp"
+#include "../aCCb/binIo.hpp"
+namespace binIo = aCCb::binaryIo;
+
 #include "../aCCb/logicalIndexing.hpp"
+namespace li = aCCb::logicalIndexing;
 
 #if true
 // the tested libraries may have profiling enabled somewhere.
@@ -35,7 +38,6 @@ using std::regex;
 using std::unordered_set;
 using std::endl;
 using std::vector;
-
 // example function defined in a different object file (makefile test)
 int objCppExampleForMakefile();
 
@@ -118,41 +120,41 @@ bool testVec2binfile2vec() {
 
 	bool pass = true;
 
-	aCCb::vec2binfile(fname, testvec8);
-	pass &= (aCCb::binfile2vec<uint8_t>(fname) == testvec8);
+	binIo::vec2file(fname, testvec8);
+	pass &= (binIo::file2vec<uint8_t>(fname) == testvec8);
 
-	aCCb::vec2binfile(fname, testvec16);
-	pass &= (aCCb::binfile2vec<uint16_t>(fname) == testvec16);
+	binIo::vec2file(fname, testvec16);
+	pass &= (binIo::file2vec<uint16_t>(fname) == testvec16);
 
-	aCCb::vec2binfile(fname, testvec32);
-	pass &= (aCCb::binfile2vec<uint32_t>(fname) == testvec32);
+	binIo::vec2file(fname, testvec32);
+	pass &= (binIo::file2vec<uint32_t>(fname) == testvec32);
 
-	aCCb::vec2binfile(fname, testvec64);
-	pass &= (aCCb::binfile2vec<uint64_t>(fname) == testvec64);
+	binIo::vec2file(fname, testvec64);
+	pass &= (binIo::file2vec<uint64_t>(fname) == testvec64);
 
 	return pass;
 }
 
-bool testLogicalIndexing() {
+template<typename T> bool testLogicalIndexing() {
 	// === test vector ===
-	vector<uint32_t> v(1000);
+	vector<T> v(1000);
 	std::iota(v.begin(), v.end(), 0);
 	const string fname("testLi.bin");
-	aCCb::vec2binfile(fname, v);
+	binIo::vec2file(fname, v);
 
 	// === generateIndex 1-arg: Even values ===
-	auto expr1 = [](const uint32_t &val) {
+	auto expr1 = [](const T &val) {
 		return val % 2 == 0;
 	};
-	vector<bool> indexOp1 = li::generateIndex<uint32_t>(v, expr1);
+	vector<bool> indexOp1 = li::generateIndex<T>(v, expr1);
 	bool pass = true;
 	pass &= li::popcount(indexOp1) == v.size() / 2;
 
 	// === generateIndex 2-arg: Values 10, 11, ... ===
-	auto expr2 = [](const uint32_t&/*val*/, size_t pos) {
+	auto expr2 = [](const T&/*val*/, size_t pos) {
 		return pos >= 10;
 	};
-	vector<bool> indexOp2 = li::generateIndex<uint32_t>(v, expr2);
+	vector<bool> indexOp2 = li::generateIndex<T>(v, expr2);
 	pass &= li::popcount(indexOp2) == v.size() - 10;
 
 	// === logical not ===
@@ -168,8 +170,9 @@ bool testLogicalIndexing() {
 	pass &= li::popcount(li::logicalAnd(indexOp1, indexOp2)) == v.size() / 2 - 5;
 
 	// === binary file read with indexOp ===
-	pass &= aCCb::binfile2vec<uint32_t>(fname, indexOp1Neg) == li::applyIndex(v, indexOp1Neg);
-
+	pass &= binIo::file2vec<T>(fname, indexOp1Neg) == li::applyIndex(v, indexOp1Neg);
+	pass &= binIo::file2vec<T>(fname, indexOp1) == li::applyIndex(v, indexOp1);
+	pass &= binIo::file2vec<T>(fname, indexOp2) == li::applyIndex(v, indexOp2);
 	return pass;
 }
 
@@ -200,7 +203,8 @@ TEST_START
 	}
 
 	TEST_CASE("logicalIndexing") {
-		REQUIRE(testLogicalIndexing());
+		REQUIRE(testLogicalIndexing<int16_t>());
+		REQUIRE(testLogicalIndexing<uint64_t>());
 	}
 
 TEST_END
