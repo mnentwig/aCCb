@@ -135,6 +135,19 @@ bool testVec2binfile2vec() {
 	return pass;
 }
 
+template<typename T> bool testMaskedWriteRead(const vector<T> &v, const string fname, const vector<bool> &indexOp) {
+	string fnameTmp = "tmp.bin";
+	bool pass = true;
+	vector<T> refResult = li::applyIndex(v, indexOp);
+	binIo::vec2file<T>(fnameTmp, v, indexOp); 			// masked write
+	vector<T> vReadback = binIo::file2vec<T>(fnameTmp); // ... and read back
+	pass &= vReadback == li::applyIndex(v, indexOp); 	// check
+
+	vReadback = binIo::file2vec<T>(fname, indexOp);		// masked read
+	pass &= vReadback == refResult;						// check
+	return pass;
+}
+
 template<typename T> bool testLogicalIndexing() {
 	// === test vector ===
 	vector<T> v(1000);
@@ -162,17 +175,27 @@ template<typename T> bool testLogicalIndexing() {
 	pass &= li::popcount(indexOp1Neg) == v.size() / 2;
 
 	// === logical or ===
-	pass &= li::popcount(li::logicalOr(indexOp1, indexOp1Neg)) == v.size();
-	pass &= li::popcount(li::logicalOr(indexOp1, indexOp2)) == v.size() - 5;
+	vector<bool> allTrue = li::logicalOr(indexOp1, indexOp1Neg);
+	pass &= li::popcount(allTrue) == v.size();
+	vector<bool> allButFive = li::logicalOr(indexOp1, indexOp2);
+	pass &= li::popcount(allButFive) == v.size() - 5;
 
 	// === logical and ===
-	pass &= li::popcount(li::logicalAnd(indexOp1, indexOp1Neg)) == 0;
-	pass &= li::popcount(li::logicalAnd(indexOp1, indexOp2)) == v.size() / 2 - 5;
+	vector<bool> allFalse = li::logicalAnd(indexOp1, indexOp1Neg);
+	pass &= li::popcount(allFalse) == 0;
+	vector<bool> halfMinusFive = li::logicalAnd(indexOp1, indexOp2);
+	pass &= li::popcount(halfMinusFive) == v.size() / 2 - 5;
 
 	// === binary file read with indexOp ===
 	pass &= binIo::file2vec<T>(fname, indexOp1Neg) == li::applyIndex(v, indexOp1Neg);
 	pass &= binIo::file2vec<T>(fname, indexOp1) == li::applyIndex(v, indexOp1);
 	pass &= binIo::file2vec<T>(fname, indexOp2) == li::applyIndex(v, indexOp2);
+
+	// === masked write / read ===
+	pass &= testMaskedWriteRead<T>(v, fname, allFalse);
+	pass &= testMaskedWriteRead<T>(v, fname, allTrue);
+	pass &= testMaskedWriteRead<T>(v, fname, allButFive);
+	pass &= testMaskedWriteRead<T>(v, fname, halfMinusFive);
 	return pass;
 }
 
