@@ -17,6 +17,7 @@
 #include "../aCCb/stringToNum.hpp"
 
 #include "../aCCb/vec2binfile2vec.hpp"
+#include "../aCCb/logicalIndexing.hpp"
 
 #if true
 // the tested libraries may have profiling enabled somewhere.
@@ -132,6 +133,50 @@ bool testVec2binfile2vec() {
 	return pass;
 }
 
+bool testLogicalIndexing() {
+
+	// === test vector ===
+	vector<uint32_t> v(1000);
+	std::iota(v.begin(), v.end(), 0);
+
+	// === generateIndex 1-arg: Even values ===
+	auto expr1 = [](const uint32_t &val) {
+		return val % 2 == 0;
+	};
+	vector<bool> indexOp1 = li::generateIndex<uint32_t>(v, expr1);
+	if (li::popcount(indexOp1) != v.size() / 2)
+		return false;
+
+	// === generateIndex 2-arg: Values 10, 11, ... ===
+	auto expr2 = [](const uint32_t&/*val*/, size_t pos) {
+		return pos >= 10;
+	};
+	vector<bool> indexOp2 = li::generateIndex<uint32_t>(v, expr2);
+	if (li::popcount(indexOp2) != v.size() - 10)
+		return false;
+
+	// === logical not ===
+	auto indexOp1Neg = li::logicalNot(indexOp1);
+	if (li::popcount(indexOp1Neg) != v.size() / 2)
+		return false;
+
+	// === logical or ===
+	if (li::popcount(li::logicalOr(indexOp1, indexOp1Neg)) != v.size())
+		return false;
+
+	if (li::popcount(li::logicalOr(indexOp1, indexOp2)) != v.size() - 5)
+		return false;
+
+	// === logical and ===
+	if (li::popcount(li::logicalAnd(indexOp1, indexOp1Neg)) != 0)
+		return false;
+
+	if (li::popcount(li::logicalAnd(indexOp1, indexOp2)) != v.size() / 2 - 5)
+		return false;
+
+	return true;
+}
+
 TEST_START
 	TEST_CASE("aCCb::stoi") {
 		REQUIRE(aCCb::stoi("123") == 123);
@@ -156,6 +201,10 @@ TEST_START
 
 	TEST_CASE("vec2binfile2vec") {
 		REQUIRE(testVec2binfile2vec());
+	}
+
+	TEST_CASE("logicalIndexing") {
+		REQUIRE(testLogicalIndexing());
 	}
 
 	TEST_END

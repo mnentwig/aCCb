@@ -63,6 +63,61 @@ template<class T> vector<bool> generateIndex(const vector<T> data, bool (*expr)(
 	return retVal;
 }
 
+/** generates logical indexing vector by evaluating expr with data, providing the index as 2nd argument */
+template<class T> vector<bool> generateIndex(const vector<T> data, bool (*expr)(const T&, size_t pos)) {
+	vector<bool> retVal;
+	retVal.reserve(data.size());
+	size_t pos = 0;
+	for (auto d : data)
+		retVal.push_back(expr(d, pos++));
+	return retVal;
+}
+
+/** "and" operation between two logical vectors */
+vector<bool> logicalAnd(const vector<bool> &arg1, const vector<bool> &arg2) {
+	assert(arg1.size() == arg2.size());
+	vector<bool> retVal;
+	retVal.reserve(arg1.size());
+	auto it1 = arg1.cbegin();
+	auto it2 = arg2.cbegin();
+	for (; it1 != arg1.cend(); ++it1, ++it2)
+		retVal.push_back((*it1) & (*it2));
+	return retVal;
+}
+
+/** "or" operation between two logical vectors */
+vector<bool> logicalOr(const vector<bool> &arg1, const vector<bool> &arg2) {
+	assert(arg1.size() == arg2.size());
+	vector<bool> retVal;
+	retVal.reserve(arg1.size());
+	auto it1 = arg1.cbegin();
+	auto it2 = arg2.cbegin();
+	for (; it1 != arg1.cend(); ++it1, ++it2)
+		retVal.push_back((*it1) | (*it2));
+	return retVal;
+}
+
+/** "xor" operation between two logical vectors */
+vector<bool> logicalXor(const vector<bool> &arg1, const vector<bool> &arg2) {
+	assert(arg1.size() == arg2.size());
+	vector<bool> retVal;
+	retVal.reserve(arg1.size());
+	auto it1 = arg1.cbegin();
+	auto it2 = arg2.cbegin();
+	for (; it1 != arg1.cend(); ++it1, ++it2)
+		retVal.push_back(*it1 ^ *it2);
+	return retVal;
+}
+
+/** "not" operation for logical vector */
+vector<bool> logicalNot(const vector<bool> &arg1) {
+	vector<bool> retVal;
+	retVal.reserve(arg1.size());
+	for (auto it1 = arg1.cbegin(); it1 != arg1.cend(); ++it1)
+		retVal.push_back(!*it1);
+	return retVal;
+}
+
 /** picks data elements identified by indexOp for each value of the map*/
 template<class T, class tKey> unordered_map<tKey, vector<T>> applyIndexMap(const unordered_map<tKey, vector<T>> &data, const vector<bool> &indexOp) {
 	size_t popcnt = popcount(indexOp);
@@ -136,7 +191,7 @@ public:
 	}
 
 	// === set ===
-	template <typename T> void set(const string key, vector<T> &data) {
+	template<typename T> void set(const string key, vector<T> &data) {
 		this->initializeCheck(data.size());
 		this->setInternal(key, data);
 	}
