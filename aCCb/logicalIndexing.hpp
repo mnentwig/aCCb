@@ -81,7 +81,7 @@ vector<bool> logicalAnd(const vector<bool> &arg1, const vector<bool> &arg2) {
 	auto it1 = arg1.cbegin();
 	auto it2 = arg2.cbegin();
 	for (; it1 != arg1.cend(); ++it1, ++it2)
-		retVal.push_back((*it1) & (*it2));
+		retVal.push_back(*it1 & *it2);
 	return retVal;
 }
 
@@ -93,7 +93,7 @@ vector<bool> logicalOr(const vector<bool> &arg1, const vector<bool> &arg2) {
 	auto it1 = arg1.cbegin();
 	auto it2 = arg2.cbegin();
 	for (; it1 != arg1.cend(); ++it1, ++it2)
-		retVal.push_back((*it1) | (*it2));
+		retVal.push_back(*it1 | *it2);
 	return retVal;
 }
 

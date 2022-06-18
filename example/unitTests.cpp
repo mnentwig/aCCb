@@ -134,47 +134,44 @@ bool testVec2binfile2vec() {
 }
 
 bool testLogicalIndexing() {
-
 	// === test vector ===
 	vector<uint32_t> v(1000);
 	std::iota(v.begin(), v.end(), 0);
+	const string fname("testLi.bin");
+	aCCb::vec2binfile(fname, v);
 
 	// === generateIndex 1-arg: Even values ===
 	auto expr1 = [](const uint32_t &val) {
 		return val % 2 == 0;
 	};
 	vector<bool> indexOp1 = li::generateIndex<uint32_t>(v, expr1);
-	if (li::popcount(indexOp1) != v.size() / 2)
-		return false;
+	bool pass = true;
+	pass &= li::popcount(indexOp1) == v.size() / 2;
 
 	// === generateIndex 2-arg: Values 10, 11, ... ===
 	auto expr2 = [](const uint32_t&/*val*/, size_t pos) {
 		return pos >= 10;
 	};
 	vector<bool> indexOp2 = li::generateIndex<uint32_t>(v, expr2);
-	if (li::popcount(indexOp2) != v.size() - 10)
-		return false;
+	pass &= li::popcount(indexOp2) == v.size() - 10;
 
 	// === logical not ===
 	auto indexOp1Neg = li::logicalNot(indexOp1);
-	if (li::popcount(indexOp1Neg) != v.size() / 2)
-		return false;
+	pass &= li::popcount(indexOp1Neg) == v.size() / 2;
 
 	// === logical or ===
-	if (li::popcount(li::logicalOr(indexOp1, indexOp1Neg)) != v.size())
-		return false;
-
-	if (li::popcount(li::logicalOr(indexOp1, indexOp2)) != v.size() - 5)
-		return false;
+	pass &= li::popcount(li::logicalOr(indexOp1, indexOp1Neg)) == v.size();
+	pass &= li::popcount(li::logicalOr(indexOp1, indexOp2)) == v.size() - 5;
 
 	// === logical and ===
-	if (li::popcount(li::logicalAnd(indexOp1, indexOp1Neg)) != 0)
-		return false;
+	pass &= li::popcount(li::logicalAnd(indexOp1, indexOp1Neg)) == 0;
+	pass &= li::popcount(li::logicalAnd(indexOp1, indexOp2)) == v.size() / 2 - 5;
 
-	if (li::popcount(li::logicalAnd(indexOp1, indexOp2)) != v.size() / 2 - 5)
-		return false;
+	// === binary file read with indexOp ===
+	//pass &= aCCb::binfile2vec<uint32_t>(fname, indexOp1Neg) == li::applyIndex(v, indexOp1Neg);
 
-	return true;
+
+	return pass;
 }
 
 TEST_START
