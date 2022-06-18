@@ -107,7 +107,6 @@ A more sophisticated threadpool library is usually (but not always!) faster, see
 * "Full" template specialization with template<> is broken (error: 'only at namespace scope'). 
 However, implementing a conventional (non-template) function with the correct signature besides the template works.
 
-* Overload on return type can be emulated by returning a proxy object that performs the switch by overloading its cast operator:
-```
-inline proxyClass::operator theTargetType() const {...}
-```
+* Overload on return type can be emulated by returning a proxy object that performs the switch by overloading its cast operator: "inline proxyClass::operator theTargetType() const {...}"
+
+* Templates can fail weirdly e.g. functions with std::istream& arguments are not resolved. Use explicit types e.g. myFun<myTemplateType>(...)

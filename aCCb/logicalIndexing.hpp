@@ -47,12 +47,12 @@ template<class T> vector<T>& getFieldOrThrow(unordered_map<string, vector<T>> &d
 
 // =======================================================================================
 
-/** picks data elements identified by indexOp, knowing the number of true elements */
+/** helper function: logical indexing on vector knowing the result size */
 template<class T> vector<T> applyIndex(const vector<T> &data, const vector<bool> &indexOp) {
 	return details::applyIndexKnownPopcount_vector<T>(data, indexOp, details::popcount(indexOp));
 }
 
-/** generates logical indexing vector by applying expr on data */
+/** generates logical indexing vector by evaluating expr with data */
 template<class T> vector<bool> generateIndex(const vector<T> data, bool (*expr)(const T&)) {
 	vector<bool> retVal;
 	retVal.reserve(data.size());
@@ -134,67 +134,11 @@ public:
 	}
 
 	// === set ===
-	void set(const string key, vector<float> &data) {
+	template <typename T> void set(const string key, vector<T> &data) {
 		this->initializeCheck(data.size());
-		this->data_float[key] = data;
+		this->setInternal(key, data);
 	}
 
-	void set(const string key, vector<double> &data) {
-		this->initializeCheck(data.size());
-		this->data_double[key] = data;
-	}
-
-	void set(const string key, vector<bool> &data) {
-		this->initializeCheck(data.size());
-		this->data_bool[key] = data;
-	}
-
-	void set(const string key, vector<string> &data) {
-		this->initializeCheck(data.size());
-		this->data_string[key] = data;
-	}
-
-	void set(const string key, vector<uint8_t> &data) {
-		this->initializeCheck(data.size());
-		this->data_uint8[key] = data;
-	}
-
-	void set(const string key, vector<int8_t> &data) {
-		this->initializeCheck(data.size());
-		this->data_int8[key] = data;
-	}
-
-	void set(const string key, vector<uint16_t> &data) {
-		this->initializeCheck(data.size());
-		this->data_uint16[key] = data;
-	}
-
-	void set(const string key, vector<int16_t> &data) {
-		this->initializeCheck(data.size());
-		this->data_int16[key] = data;
-	}
-
-	void set(const string key, vector<uint32_t> &data) {
-		this->initializeCheck(data.size());
-		this->data_uint32[key] = data;
-	}
-
-	void set(const string key, vector<int32_t> &data) {
-		this->initializeCheck(data.size());
-		this->data_int32[key] = data;
-	}
-
-	void set(const string key, vector<uint64_t> &data) {
-		this->initializeCheck(data.size());
-		this->data_uint64[key] = data;
-	}
-
-	void set(const string key, vector<int64_t> &data) {
-		this->initializeCheck(data.size());
-		this->data_int64[key] = data;
-	}
-
-// === get ===
 protected:
 	/** helper function: runtime check enforces equal length of all contained vectors */
 	void initializeCheck(size_t newSize) {
@@ -206,11 +150,58 @@ protected:
 		}
 	}
 
+	/** helper function: type-specific set() variants */
+	void setInternal(const string key, vector<double> &data) {
+		this->data_double[key] = data;
+	}
+
+	void setInternal(const string key, vector<bool> &data) {
+		this->data_bool[key] = data;
+	}
+
+	void setInternal(const string key, vector<string> &data) {
+		this->data_string[key] = data;
+	}
+
+	void setInternal(const string key, vector<uint8_t> &data) {
+		this->data_uint8[key] = data;
+	}
+
+	void setInternal(const string key, vector<int8_t> &data) {
+		this->data_int8[key] = data;
+	}
+
+	void setInternal(const string key, vector<uint16_t> &data) {
+		this->data_uint16[key] = data;
+	}
+
+	void setInternal(const string key, vector<int16_t> &data) {
+		this->data_int16[key] = data;
+	}
+
+	void setInternal(const string key, vector<uint32_t> &data) {
+		this->data_uint32[key] = data;
+	}
+
+	void setInternal(const string key, vector<int32_t> &data) {
+		this->data_int32[key] = data;
+	}
+
+	void setInternal(const string key, vector<uint64_t> &data) {
+		this->data_uint64[key] = data;
+	}
+
+	void setInternal(const string key, vector<int64_t> &data) {
+		this->data_int64[key] = data;
+	}
+
 	/** common length of all vectors (once initialized) */
 	size_t nElem;
 
 	/** whether at least one vector was set, making the length known */
 	bool initialized;
+
+	/** contents by type */
 	unordered_map<string, vector<float>> data_float;
 	unordered_map<string, vector<double>> data_double;
 	unordered_map<string, vector<bool>> data_bool;
