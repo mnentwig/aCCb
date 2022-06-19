@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <string>
 #include <algorithm> // std::count
+#include <cassert>
 namespace aCCb {
 using std::vector;
 using std::unordered_map;

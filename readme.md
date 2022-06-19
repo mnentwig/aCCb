@@ -16,7 +16,8 @@ Consider this "notes-to-self" that may or may not make much sense to someone els
 
 * The keyboard shortcuts for "Run (F11)" and "Debug (Ctrl-F11)" change the selected "launch configuration, usually resetting it to the previously launched value. To change it, use the "Launch" toolbar button on the left or select from the drop-down list "Run xyz" in the "Run" toolbar button.
 
-* The Eclipse console seems unreliable: In some cases, output to stderr immediately before exit() was missing despite being flushed with std::endl.
+* The Eclipse console is unreliable: E.g. sometimes final output before exit() is missing. Flushing does not help. 
+* It may show in "run" mode when it is missing in "debug"
 
 * Breakpoint on thrown exceptions: Debug view, "..." button ("View menu"), "Add event breakpoint (C/C++)", select "exception thrown". Some exceptions e.g. from "std::stoi" are not caught (but "catch throw" to gdb in the "Debugger console" gives the same result (unstandardized binary interface)? If needed, catch and re-throw from own code, then the debugger will detect it.
 
@@ -102,6 +103,7 @@ A more sophisticated threadpool library is usually (but not always!) faster, see
 ## Notes: Namespace
 * Convention: Hide private functions in nested "details" namespace (or "Private" etc)
 * Use descriptive, long namespace text, then create convenience alias e.g. namespace li = aCCb::logicalIndexing;
+* method definitions should ideally not use aliases, as Eclipse shows the verbatim code in tooltips e.g. "auto" variable type
 
 ## Notes: Templates
 * "Full" template specialization with template<> is broken (error: 'only at namespace scope'). 

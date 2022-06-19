@@ -5,9 +5,9 @@
 #	define TEST_START
 #	define TEST_END
 #else
-#ifdef NDEBUG
-#	error "NDEBUG may not be set, unitTest inserts assert()"
-#endif
+//#ifdef NDEBUG
+//#	error "NDEBUG may not be set, unitTest inserts assert()"
+//#endif
 #include <iostream>
 // main function opens
 #define TEST_START void main2() {

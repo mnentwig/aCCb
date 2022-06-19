@@ -216,6 +216,8 @@ template<typename T> bool testLogicalIndexing() {
 	return pass;
 }
 
+#undef NDEBUG // hack - minimal framework uses assert()
+#include <cassert>
 TEST_START
 	TEST_CASE("aCCb::stoi") {
 		REQUIRE(aCCb::stoi("123") == 123);
