@@ -110,3 +110,18 @@ However, implementing a conventional (non-template) function with the correct si
 * Overload on return type can be emulated by returning a proxy object that performs the switch by overloading its cast operator: "inline proxyClass::operator theTargetType() const {...}"
 
 * Templates can fail weirdly e.g. functions with std::istream& arguments are not resolved. Use explicit types e.g. myFun<myTemplateType>(...)
+
+## Notes: Default copy constructor
+* delete when object/struct copy makes no sense e.g. holding file handles
+* see "rule of 3/rule of 5"
+
+## Notes: CRTP ("Curiously recuring template pattern")
+Derived class T introduces an intermediate class with common code using template <class T> and "static_cast<T>(this). 
+* More compact code
+* avoids virtual calls 
+
+## Notes: return types
+* "auto" fills in complex return types: decltype(auto) myFun(){return someComplexType;}
+* "auto" return type can be specified with -> syntax
+* "decltype" determines type of an expression
+* "declval" in such an expression provides access to objects and methods without requiring a constructor
