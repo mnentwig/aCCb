@@ -3,17 +3,74 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <unordered_map>
 #include "../aCCb/logicalIndexing.hpp"
+#include "../aCCb/containerUtils.hpp"
 namespace li = aCCb::logicalIndexing;
 using std::string;
 using std::vector;
-
+using std::runtime_error;
 class tableFactory {
+protected:
+	class vecMapLoader;
 public:
-	static aCCb::logicalIndexing::vecMap csvTable(std::istream &is, char sep = ',') {
-		// sequential list of parsed fields
+	class importSpec {
+		friend vecMapLoader;
+	public:
+		importSpec() :
+				colType(), colName(), inputHandler() {
+		}
+		typedef li::vecMap::colType_e colType_e;
+		char sep = ',';
+		// enum autoColName_e {OFF, BASE0, BASE1, EXCEL};
+		colType_e colTypeDefault = colType_e::UNDEF;
+		const colType_e colType_UNDEF = colType_e::UNDEF;
+		const colType_e colType_FLOAT = colType_e::FLOAT;
+		const colType_e colType_DOUBLE = colType_e::DOUBLE;
+		const colType_e colType_BOOL = colType_e::BOOL;
+		const colType_e colType_STRING = colType_e::STRING;
+		const colType_e colType_UINT8 = colType_e::UINT8;
+		const colType_e colType_INT8 = colType_e::INT8;
+		const colType_e colType_UINT16 = colType_e::UINT16;
+		const colType_e colType_INT16 = colType_e::INT16;
+		const colType_e colType_UINT32 = colType_e::UINT32;
+		const colType_e colType_INT32 = colType_e::INT32;
+		const colType_e colType_UINT64 = colType_e::UINT64;
+		const colType_e colType_INT64 = colType_e::INT64;
+		void registerColumn(size_t posBase0, string name, colType_e colType) {
+			// === error checking ===
+			if (name == string())
+				throw runtime_error("name may not be empty");
+			if ((this->colName.size() > posBase0) && (this->colName[posBase0] != string()))
+				throw runtime_error("column position already registered");
+			if (aCCb::containerUtils::contains(this->colName, name))
+				throw runtime_error("column name already registered");
+
+			// === create new entry ===
+			aCCb::containerUtils::putAt(this->colName, name, posBase0);
+			this->colType[name] = colType;
+		}
+	protected:
+		std::unordered_map<string, colType_e> colType;
+		vector<string> colName;
+		vector<void (*)(const string&)> inputHandler;
+		template<typename T> static void put(vector<T> vec, size_t index, T elem) {
+			while (vec.size() <= index)
+				vec.resize(index + 1);
+			vec[index] = elem;
+		}
+	}; // class importSpec
+
+	static void csvTable(std::istream &is, importSpec &spec) {
 		vector<string> fields;
+		size_t nCols;
+		csvTable(is, spec, /*out*/fields, /*out*/nCols);
+		vecMapLoader l(fields, nCols, spec);
+	}
+protected:
+	static void csvTable(std::istream &is, importSpec &spec, /*out*/vector<string> &fields, /*out*/size_t &nColumns) {
 		// translate sep (argument) to SEP (constant token)
+		const int sep = spec.sep;
 		const int SEP = EOF - 1;
 		// check consistent column count in all rows
 		size_t commonNCols = 0;
@@ -44,8 +101,8 @@ public:
 			case QUOTE_OFF:
 			case QUOTE_CLOSED_UNTERMINATED:
 
-				// === EOF handling ===
 				if (cInt == EOF) {
+					// === EOF handling ===
 					// break outer loop
 					running = false;
 					if ((nColsRow == 0) && (tmp.size() == 0)) {
@@ -56,7 +113,8 @@ public:
 						cInt = '\n';
 					}
 				} else if (cInt == sep) {
-					cInt = SEP;
+					// === field separator detection ===
+					cInt = SEP;					// constant for "case SEP:" below
 				}
 
 				switch (cInt) {
@@ -73,14 +131,15 @@ public:
 				case '\r':
 					// suppress windows \r from \r\n
 					break;
-				case SEP: // end-of-field
+				case SEP:					// end-of-field
 					fields.push_back(tmp);
 					tmp = "";
 					++nColsRow;
 					quoteState = QUOTE_OFF;
 					break;
-				case '\n': // end-of-line
+				case '\n':					// end-of-line
 					fields.push_back(tmp);
+					++nColsRow;
 					quoteState = QUOTE_OFF;
 					tmp = "";
 
@@ -116,14 +175,88 @@ public:
 			  // switch (quoted)
 		} // while not EOF
 
-		for (auto x : fields){
+		for (auto x : fields) {
 			std::cout << "'" << x << "'\n" << std::flush;
 		}
-
-		vecMapLoader self;
-		return self;
+		nColumns = commonNCols;
 	}
-protected:
+
 	class vecMapLoader: public li::vecMap {
+	protected:
+		class importJob;
+		typedef void (*importFun_t)(importJob&, const string&);
+
+		class importJob {
+		public:
+			importJob() :
+					handlerFun(NULL), ixCol(0), colType(UNDEF), dataVec(NULL) {
+			}
+			importFun_t handlerFun;
+			size_t ixCol;
+			colType_e colType;
+			void *dataVec;
+		};
+
+		static void handler_string(importJob &j, const string &data) {
+			std::cout << data << "\n" << std::flush;
+			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+	public:
+		vecMapLoader(vector<string> tokens, size_t nCols, importSpec &spec) {
+
+			// === set up parser function per column ===
+			vector<importJob> importJobsByCol;
+
+			for (size_t ixCol = 0; ixCol < nCols; ++ixCol) {
+				string &colName = spec.colName[ixCol];
+
+				// === skip unused columns ===
+				if (colName == "")
+					continue;
+				colType_e colType = spec.colType[colName];
+				if (colType == spec.colType_UNDEF)
+					continue;
+
+				importJob job;
+				switch (colType) {
+				case colType_e::STRING: {
+					job.dataVec = (void*) &(this->data_string[colName]); // note: here, [] operator inserts default element and returns reference
+					job.handlerFun = &handler_string;
+					break;
+				}
+				default:
+					break;
+				}
+				if (job.handlerFun != NULL) {
+					job.colType = colType;
+					aCCb::containerUtils::putAtVal(importJobsByCol, job, ixCol);
+				}
+
+				//aCCb::containerUtils::putAt(colHandlers, ixCol, )
+			}
+			auto itToken = tokens.cbegin();
+			auto itEnd = tokens.cend();
+			size_t ixCol = 0;
+			while (itToken != itEnd) {
+				if (ixCol < importJobsByCol.size())
+					importOneToken(importJobsByCol[ixCol], *itToken);
+
+				++ixCol;
+				if (ixCol == nCols)
+					ixCol = 0;
+				++itToken;
+			}
+			if (ixCol != 0)
+				throw std::runtime_error("?excess tokens?");
+		}
+
+		static void importOneToken(importJob &j, const string &token) {
+			if (j.handlerFun == NULL)
+				return;
+			j.handlerFun(j, token);
+		}
 	};
+	// class vecMapLoader
 };
+// class tableFactory

@@ -197,6 +197,10 @@ public:
 		this->setInternal(key, data);
 	}
 
+	enum colType_e {
+		UNDEF, FLOAT, DOUBLE, BOOL, STRING, UINT8, INT8, UINT16, INT16, UINT32, INT32, UINT64, INT64
+	};
+
 protected:
 	/** helper function: runtime check enforces equal length of all contained vectors */
 	void initializeCheck(size_t newSize) {
