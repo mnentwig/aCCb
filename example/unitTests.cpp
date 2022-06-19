@@ -17,6 +17,7 @@
 #include "../aCCb/stringToNum.hpp"
 
 #include "../aCCb/binIo.hpp"
+#include "../aCCb/imemstream.hpp"
 namespace binIo = aCCb::binaryIo;
 
 #include "../aCCb/logicalIndexing.hpp"
@@ -135,6 +136,22 @@ bool testVec2binfile2vec() {
 	return pass;
 }
 
+template <typename T> bool test_imemstream() {
+	// === generate sample vector ===
+	vector<T> vecRef(100);
+	std::iota(vecRef.begin(), vecRef.end(), 0);
+
+	// === create imemstream ===
+	size_t nBytes = vecRef.size() * sizeof(vecRef[0]);
+	const char *dataPtr = (const char*) &vecRef[0];
+	binIo::imemstream myInStream(dataPtr, nBytes);
+
+	// === read back from imemstream to vec ===
+	vector<T> vecB = binIo::stream2vec<T>(myInStream);
+
+	return vecB == vecRef;
+}
+
 template<typename T> bool testMaskedWriteRead(const vector<T> &v, const string fname, const vector<bool> &indexOp) {
 	string fnameTmp = "tmp.bin";
 	bool pass = true;
@@ -221,8 +238,14 @@ TEST_START
 		REQUIRE(testSplitToLines() == true);
 	}
 
-	TEST_CASE("vec2binfile2vec") {
+	TEST_CASE("binIo::vec to file to vec") {
 		REQUIRE(testVec2binfile2vec());
+	}
+
+	TEST_CASE("binIo::imemstream") {
+		REQUIRE(test_imemstream<uint8_t>());
+		REQUIRE(test_imemstream<uint64_t>());
+		REQUIRE(test_imemstream<float>());
 	}
 
 	TEST_CASE("logicalIndexing") {
