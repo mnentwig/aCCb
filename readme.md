@@ -127,3 +127,6 @@ Derived class T introduces an intermediate class with common code using template
 * "auto" return type can be specified with -> syntax
 * "decltype" determines type of an expression
 * "declval" in such an expression provides access to objects and methods without requiring a constructor
+
+## Notes: String to number
+append known token and use std::istringstream >> myVar. Then check ss.good() than read string and confirm known token (>> will silently eat whitespace on both sides)
