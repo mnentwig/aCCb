@@ -4,7 +4,7 @@
 
 
 int mainB() {
-	std::istringstream csv("one,two,three\nfour,five,six\nseven,eight,nine");
+	std::istringstream csv("one,two,three\n\r\"four, four\nmore four\",five,six\nseven,eight,\"nine\"\r\n");
 	tableFactory::csvTable(csv);
 	return 0;
 }
