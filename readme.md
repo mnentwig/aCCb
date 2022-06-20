@@ -129,4 +129,7 @@ Derived class T introduces an intermediate class with common code using template
 * "declval" in such an expression provides access to objects and methods without requiring a constructor
 
 ## Notes: String to number
-append known token and use std::istringstream >> myVar. Then check ss.good() than read string and confirm known token (>> will silently eat whitespace on both sides)
+append known sentry token and use std::istringstream >> myVar. Then check ss.good() than read string and confirm sentry token (>> will silently eat whitespace on both sides)
+
+## Notes: istream
+* conversion failed: fail bit

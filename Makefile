@@ -20,7 +20,7 @@ OBJS = 	example/bnDataset.o \
 # resulting .d files (for cleaning)
 DEPS:= $(patsubst %.o,%.d,$(OBJS))
 
-MY_BUILDFLAGS = -std=c++17 -Wall -Wfatal-errors -Wextra -Wpedantic  -Weffc++ 
+MY_BUILDFLAGS = -std=c++17 -Wall -Wfatal-errors -Wextra -Wpedantic  -Weffc++
 #-Wconversion 
 #-Wsign-conversion -Weffc++ -Wshadow
 # Eclipse passes debug/release build via this variable
@@ -31,6 +31,7 @@ else ifeq ($(BUILD_MODE),run)
 else
 	CFLAGS += -O0 -g ${MY_BUILDFLAGS}
 endif
+LDFLAGS += -static
 
 all:	example1.exe example2.exe unitTests.exe example_istreamFromMem.exe example_csvTable.exe
 

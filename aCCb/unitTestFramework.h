@@ -27,7 +27,7 @@ int main() {																\
 
 // === standard feature TEST_CASE ===
 // (do nothing, must be wrapped byu TEST_START ... TEST_END
-#define TEST_CASE(a)
+#define TEST_CASE(a)	std::cout << "TC:\t" << a << "\n" << std::flush;
 // === standard feature REQUIRE ===
 #define REQUIRE(a) assert(a)
 // standard feature === CHECK_THROWS_WITH ===

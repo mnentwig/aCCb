@@ -198,7 +198,6 @@ protected:
 		};
 
 		static void handler_string(importJob &j, const string &data) {
-			std::cout << data << "\n" << std::flush;
 			((vector<string>*) j.dataVec)->push_back(data);
 		}
 

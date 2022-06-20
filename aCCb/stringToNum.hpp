@@ -27,4 +27,42 @@ inline int stoi(string val) {
 	}
 	return retval;
 }
+
+#if 0
+template<typename T> inline bool str2num(const string &str, T &val) {
+	std::stringstream ss;
+	string sentry;
+	ss << str << "_"; // append sentry character
+	ss >> val >> sentry;
+	return ((sentry == "_") && !ss.fail() && ss.eof());
+}
+#endif
+template<typename T> inline bool str2num(const string &str, T &val) {
+	std::stringstream ss;
+	string sentry;
+	string dummy;
+	if (str.find('_') != str.npos)
+		return false;			// string contains sentry character (which is never valid in a convertible number)
+	ss << str << "_"; 			// append sentry character
+	bool f1 = (ss >> val);		// read number, check whether successful
+	bool f2 = (ss >> sentry);	// check for trailing characters (sentry: OK)
+	return ((sentry == "_") && f1 && f2);
+}
+
+// special case as bytesize read from istream returns single character
+inline bool str2num(const string &str, uint8_t &val) {
+	int val2;
+	bool retval = str2num<int>(str, val2);
+	val = (uint8_t) val2;
+	return (retval && (val2 >= 0) && (val2 <= 0xFF));
+}
+
+// special case as bytesize read from istream returns single character
+inline bool str2num(const string &str, int8_t &val) {
+	int val2;
+	bool retval = str2num<int>(str, val2);
+	val = (uint8_t) val2;
+	return (retval && (val2 >= -128) && (val2 <= 127));
+}
+
 } // NS

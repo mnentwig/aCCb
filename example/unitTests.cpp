@@ -136,7 +136,7 @@ bool testVec2binfile2vec() {
 	return pass;
 }
 
-template <typename T> bool test_imemstream() {
+template<typename T> bool test_imemstream() {
 	// === generate sample vector ===
 	vector<T> vecRef(100);
 	std::iota(vecRef.begin(), vecRef.end(), 0);
@@ -216,7 +216,29 @@ template<typename T> bool testLogicalIndexing() {
 	return pass;
 }
 
-#undef NDEBUG // hack - minimal framework uses assert()
+#if 0
+TEST(IsNumber, True) {
+	char const *tests[] {"42", "3.14", "-0", "+4", ".3",
+		"+.5", "-.23", "7.", "1e2", "1.e2",
+		"1.0e-2", "8.e+09", "2E34", "61e2", "-0e1",
+		"+0E+10", "-.01E-5", "07", "+01E1", "12.34"};
+	for (auto const &x : tests) {
+		EXPECT_TRUE(is_number(x));
+	}
+}
+
+TEST(IsNumber, False) {
+	char const *tests[] {"4e", "xyz", ".3.14", "--0", "2-4",
+		"..3", ".+5", "7 2", "1f", "1.0f",
+		"1e-2.0", "8e+0e1", "2E.4", "a", "e15",
+		"-0e10.3", ".e2", "+1.2E0e", "1.2+3", "e1"};
+	for (auto const &x : tests) {
+		EXPECT_FALSE(is_number(x));
+	}
+}
+#endif
+
+#undef NDEBUG // Note: standard supports re-inclusion of <assert> with NDEBUG changed
 #include <cassert>
 TEST_START
 	TEST_CASE("aCCb::stoi") {
@@ -253,6 +275,23 @@ TEST_START
 	TEST_CASE("logicalIndexing") {
 		REQUIRE(testLogicalIndexing<int16_t>());
 		REQUIRE(testLogicalIndexing<uint64_t>());
+	}
+
+	TEST_CASE("str2num") {
+		uint8_t valu8;
+		REQUIRE(!aCCb::str2num("-1", valu8));
+		REQUIRE(aCCb::str2num("0", valu8) && (valu8 == 0));
+		REQUIRE(aCCb::str2num("255", valu8) && (valu8 == 255));
+		REQUIRE(!aCCb::str2num("256", valu8));
+		int8_t val8;
+		REQUIRE(!aCCb::str2num("-129", val8));
+		REQUIRE(aCCb::str2num("-128", val8) && (val8 == -128));
+		REQUIRE(aCCb::str2num("127", val8) && (val8 == 127));
+		REQUIRE(!aCCb::str2num("128", val8));
+		int16_t val16;
+		REQUIRE(aCCb::str2num("12345", val16) && (val16 == 12345));
+		int32_t val32;
+		REQUIRE(aCCb::str2num("-12345", val32) && (val32 == -12345));
 	}
 
 TEST_END
