@@ -28,17 +28,8 @@ inline int stoi(string val) {
 	return retval;
 }
 
-#if 0
 template<typename T> inline bool str2num(const string &str, T &val) {
-	std::stringstream ss;
-	string sentry;
-	ss << str << "_"; // append sentry character
-	ss >> val >> sentry;
-	return ((sentry == "_") && !ss.fail() && ss.eof());
-}
-#endif
-template<typename T> inline bool str2num(const string &str, T &val) {
-	std::stringstream ss;
+	std::stringstream ss; 		// note: uses "classic" C locale by default
 	string sentry;
 	string dummy;
 	if (str.find('_') != str.npos)
