@@ -132,4 +132,5 @@ Derived class T introduces an intermediate class with common code using template
 append known sentry token and use std::istringstream >> myVar. Then check ss.good() than read string and confirm sentry token (>> will silently eat whitespace on both sides)
 
 ## Notes: istream
-* conversion failed: fail bit
+* use return value e.g. bool flag = (is >> val);
+* default locale is "classic" C
