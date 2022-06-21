@@ -4,6 +4,7 @@
 #include <vector>
 #include <stdexcept>
 #include <unordered_map>
+#include "../aCCb/stringToNum.hpp"
 #include "../aCCb/logicalIndexing.hpp"
 #include "../aCCb/containerUtils.hpp"
 namespace li = aCCb::logicalIndexing;
@@ -202,14 +203,17 @@ protected:
 		};
 
 		static void handler_float(importJob &j, const string &data) {
-			float val;
+			uint8_t val;
 			if (!aCCb::str2num(data, val))
 				throw runtime_error("conversion failed");
 			((vector<float>*) j.dataVec)->push_back(val);
 		}
 
 		static void handler_double(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
+			double val;
+			if (!aCCb::str2num(data, val))
+				throw runtime_error("conversion failed");
+			((vector<double>*) j.dataVec)->push_back(val);
 		}
 
 		static void handler_bool(importJob &j, const string &data) {
