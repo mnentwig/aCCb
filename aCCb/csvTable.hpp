@@ -202,58 +202,15 @@ protected:
 			void *dataVec;
 		};
 
-		static void handler_float(importJob &j, const string &data) {
-			uint8_t val;
+		template <typename T> static void handler_num(importJob &j, const string &data) {
+			T val;
 			if (!aCCb::str2num(data, val))
 				throw runtime_error("conversion failed");
-			((vector<float>*) j.dataVec)->push_back(val);
-		}
-
-		static void handler_double(importJob &j, const string &data) {
-			double val;
-			if (!aCCb::str2num(data, val))
-				throw runtime_error("conversion failed");
-			((vector<double>*) j.dataVec)->push_back(val);
-		}
-
-		static void handler_bool(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
+			((vector<T>*) j.dataVec)->push_back(val);
 		}
 
 		static void handler_string(importJob &j, const string &data) {
 			((vector<string>*) j.dataVec)->push_back(data);
-		}
-
-		static void handler_uint8(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
-		}
-
-		static void handler_int8(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
-		}
-
-		static void handler_uint16(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
-		}
-
-		static void handler_int16(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
-		}
-
-		static void handler_uint32(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
-		}
-
-		static void handler_int32(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
-		}
-
-		static void handler_uint64(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
-		}
-
-		static void handler_int64(importJob &j, const string &data) {
-//			((vector<string>*) j.dataVec)->push_back(data);
 		}
 
 		const colType_e colType_UNDEF = colType_e::UNDEF;
@@ -287,10 +244,66 @@ protected:
 					continue;
 
 				importJob job;
+				// note: The [] map operator on a non-existing element inserts the default element
 				switch (colType) {
+				case colType_e::FLOAT: {
+					job.dataVec = (void*) &(this->data_float[colName]);
+					job.handlerFun = &handler_num<float>;
+					break;
+				}
 				case colType_e::STRING: {
-					job.dataVec = (void*) &(this->data_string[colName]); // note: here, [] operator inserts default element and returns reference
+					job.dataVec = (void*) &(this->data_string[colName]);
 					job.handlerFun = &handler_string;
+					break;
+				}
+				case colType_e::DOUBLE: {
+					job.dataVec = (void*) &(this->data_double[colName]);
+					job.handlerFun = &handler_num<double>;
+					break;
+				}
+				case colType_e::BOOL: {
+					job.dataVec = (void*) &(this->data_double[colName]);
+					job.handlerFun = &handler_num<bool>;
+					break;
+				}
+				case colType_e::UINT8: {
+					job.dataVec = (void*) &(this->data_uint8[colName]);
+					job.handlerFun = &handler_num<uint8_t>;
+					break;
+				}
+				case colType_e::INT8: {
+					job.dataVec = (void*) &(this->data_int8[colName]);
+					job.handlerFun = &handler_num<int8_t>;
+					break;
+				}
+				case colType_e::UINT16: {
+					job.dataVec = (void*) &(this->data_uint16[colName]);
+					job.handlerFun = &handler_num<uint16_t>;
+					break;
+				}
+				case colType_e::INT16: {
+					job.dataVec = (void*) &(this->data_int16[colName]);
+					job.handlerFun = &handler_num<int16_t>;
+					break;
+				}
+				case colType_e::UINT32: {
+					job.dataVec = (void*) &(this->data_uint32[colName]);
+					job.handlerFun = &handler_num<uint32_t>;
+					break;
+				}
+				case colType_e::INT32: {
+					job.dataVec = (void*) &(this->data_int32[colName]);
+					job.handlerFun = &handler_num<int32_t>;
+					break;
+				}
+				case colType_e::UINT64: {
+					job.dataVec = (void*) &(this->data_uint64[colName]);
+					job.handlerFun = &handler_num<uint64_t>;
+					break;
+				}
+				case colType_e::INT64: {
+					job.dataVec = (void*) &(this->data_int64[colName]);
+					job.handlerFun = &handler_num<int64_t>;
 					break;
 				}
 				default:
