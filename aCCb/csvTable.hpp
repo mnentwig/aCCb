@@ -12,10 +12,10 @@ using std::vector;
 using std::runtime_error;
 class tableFactory {
 protected:
-	class vecMapLoader;
+	class vecMapCsvLoader;
 public:
 	class importSpec {
-		friend vecMapLoader;
+		friend vecMapCsvLoader;
 	public:
 		importSpec() :
 				colType(), colName(), inputHandler() {
@@ -65,7 +65,7 @@ public:
 		vector<string> fields;
 		size_t nCols;
 		csvTable(is, spec, /*out*/fields, /*out*/nCols);
-		vecMapLoader l(fields, nCols, spec);
+		vecMapCsvLoader l(fields, nCols, spec);
 	}
 protected:
 	static void csvTable(std::istream &is, importSpec &spec, /*out*/vector<string> &fields, /*out*/size_t &nColumns) {
@@ -181,7 +181,11 @@ protected:
 		nColumns = commonNCols;
 	}
 
-	class vecMapLoader: public li::vecMap {
+	// ===================================================================
+	// vecMapCsvLoader
+	// ===================================================================
+	/** helper class to load a vecMap from a CSV source */
+	class vecMapCsvLoader: public li::vecMap {
 	protected:
 		class importJob;
 		typedef void (*importFun_t)(importJob&, const string&);
@@ -197,12 +201,73 @@ protected:
 			void *dataVec;
 		};
 
+		static void handler_float(importJob &j, const string &data) {
+			float val;
+			if (!aCCb::str2num(data, val))
+				throw runtime_error("conversion failed");
+			((vector<float>*) j.dataVec)->push_back(val);
+		}
+
+		static void handler_double(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		static void handler_bool(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
 		static void handler_string(importJob &j, const string &data) {
 			((vector<string>*) j.dataVec)->push_back(data);
 		}
 
+		static void handler_uint8(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		static void handler_int8(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		static void handler_uint16(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		static void handler_int16(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		static void handler_uint32(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		static void handler_int32(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		static void handler_uint64(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		static void handler_int64(importJob &j, const string &data) {
+//			((vector<string>*) j.dataVec)->push_back(data);
+		}
+
+		const colType_e colType_UNDEF = colType_e::UNDEF;
+		const colType_e colType_FLOAT = colType_e::FLOAT;
+		const colType_e colType_DOUBLE = colType_e::DOUBLE;
+		const colType_e colType_BOOL = colType_e::BOOL;
+		const colType_e colType_STRING = colType_e::STRING;
+		const colType_e colType_UINT8 = colType_e::UINT8;
+		const colType_e colType_INT8 = colType_e::INT8;
+		const colType_e colType_UINT16 = colType_e::UINT16;
+		const colType_e colType_INT16 = colType_e::INT16;
+		const colType_e colType_UINT32 = colType_e::UINT32;
+		const colType_e colType_INT32 = colType_e::INT32;
+		const colType_e colType_UINT64 = colType_e::UINT64;
+		const colType_e colType_INT64 = colType_e::INT64;
+
 	public:
-		vecMapLoader(vector<string> tokens, size_t nCols, importSpec &spec) {
+		vecMapCsvLoader(vector<string> tokens, size_t nCols, importSpec &spec) {
 
 			// === set up parser function per column ===
 			vector<importJob> importJobsByCol;

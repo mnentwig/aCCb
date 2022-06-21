@@ -28,8 +28,7 @@ inline int stoi(string val) {
 	return retval;
 }
 
-template<typename T> //inline
-bool str2num(const string &str, T &val) {
+template<typename T> inline bool str2num(const string &str, T &val) {
 	std::stringstream ss; 		// note: uses "classic" C locale by default
 	string sentry;
 	string dummy;
@@ -42,7 +41,7 @@ bool str2num(const string &str, T &val) {
 }
 
 // special case as bytesize read from istream returns single character
-inline bool str2num(const string &str, uint8_t &val) {
+template <> inline bool str2num(const string &str, uint8_t &val) {
 	int val2;
 	bool retval = str2num<int>(str, val2);
 	val = (uint8_t) val2;
@@ -50,7 +49,7 @@ inline bool str2num(const string &str, uint8_t &val) {
 }
 
 // special case as bytesize read from istream returns single character
-inline bool str2num(const string &str, int8_t &val) {
+template <> inline bool str2num(const string &str, int8_t &val) {
 	int val2;
 	bool retval = str2num<int>(str, val2);
 	val = (uint8_t) val2;
