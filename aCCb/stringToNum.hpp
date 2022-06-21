@@ -28,7 +28,8 @@ inline int stoi(string val) {
 	return retval;
 }
 
-template<typename T> inline bool str2num(const string &str, T &val) {
+template<typename T> //inline
+bool str2num(const string &str, T &val) {
 	std::stringstream ss; 		// note: uses "classic" C locale by default
 	string sentry;
 	string dummy;

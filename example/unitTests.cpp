@@ -289,9 +289,21 @@ TEST_START
 		REQUIRE(aCCb::str2num("127", val8) && (val8 == 127));
 		REQUIRE(!aCCb::str2num("128", val8));
 		int16_t val16;
+		REQUIRE(aCCb::str2num("-32768", val16) && (val16 == -32768));
+		REQUIRE(!aCCb::str2num("-32769", val16));
+		REQUIRE(aCCb::str2num("32767", val16) && (val16 == 32767));
+		REQUIRE(!aCCb::str2num("32768", val16));
+		REQUIRE(!aCCb::str2num("987654321098765432109876543210", val16));
 		REQUIRE(aCCb::str2num("12345", val16) && (val16 == 12345));
 		int32_t val32;
 		REQUIRE(aCCb::str2num("-12345", val32) && (val32 == -12345));
+		bool valBool;
+		REQUIRE(aCCb::str2num("0", valBool) && (valBool == false));
+		REQUIRE(aCCb::str2num("1", valBool) && (valBool == true));
+		REQUIRE(!aCCb::str2num("2", valBool)); // only "0" and "1" are valid
+		REQUIRE(!aCCb::str2num("false", valBool)); // only "0" and "1" are valid
+		REQUIRE(!aCCb::str2num("FALSE", valBool)); // only "0" and "1" are valid
+		REQUIRE(!aCCb::str2num("TRUE", valBool)); // only "0" and "1" are valid
 	}
 
 TEST_END
