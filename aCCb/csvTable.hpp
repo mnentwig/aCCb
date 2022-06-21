@@ -202,7 +202,7 @@ protected:
 			void *dataVec;
 		};
 
-		template <typename T> static void handler_num(importJob &j, const string &data) {
+		template<typename T> static void handler_num(importJob &j, const string &data) {
 			T val;
 			if (!aCCb::str2num(data, val))
 				throw runtime_error("conversion failed");
@@ -228,7 +228,7 @@ protected:
 		const colType_e colType_INT64 = colType_e::INT64;
 
 	public:
-		vecMapCsvLoader(vector<string> tokens, size_t nCols, importSpec &spec) {
+		vecMapCsvLoader(vector<string> fields, size_t nCols, importSpec &spec) {
 
 			// === set up parser function per column ===
 			vector<importJob> importJobsByCol;
@@ -240,12 +240,16 @@ protected:
 				if (colName == "")
 					continue;
 				colType_e colType = spec.colType[colName];
-				if (colType == spec.colType_UNDEF)
-					continue;
 
+				// === dispatch field type ===
+				// - determine the vector, where data goes
+				// - select the correct conversion function to put it there
 				importJob job;
 				// note: The [] map operator on a non-existing element inserts the default element
 				switch (colType) {
+				case colType_e::UNDEF:
+					continue;
+
 				case colType_e::FLOAT: {
 					job.dataVec = (void*) &(this->data_float[colName]);
 					job.handlerFun = &handler_num<float>;
@@ -307,32 +311,31 @@ protected:
 					break;
 				}
 				default:
-					break;
-				}
-				if (job.handlerFun != NULL) {
-					job.colType = colType;
-					aCCb::containerUtils::putAtVal(importJobsByCol, job, ixCol);
+					throw std::runtime_error("?unsupported colType?");
 				}
 
-				//aCCb::containerUtils::putAt(colHandlers, ixCol, )
-			}
-			auto itToken = tokens.cbegin();
-			auto itEnd = tokens.cend();
+				job.colType = colType;
+				aCCb::containerUtils::putAtVal(importJobsByCol, job, ixCol);
+			} // for columns
+
+			// === parse all fields ===
+			auto itField = fields.cbegin();
+			auto itEnd = fields.cend();
 			size_t ixCol = 0;
-			while (itToken != itEnd) {
+			while (itField != itEnd) {
 				if (ixCol < importJobsByCol.size())
-					importOneToken(importJobsByCol[ixCol], *itToken);
+					importOneField(importJobsByCol[ixCol], *itField);
 
 				++ixCol;
 				if (ixCol == nCols)
 					ixCol = 0;
-				++itToken;
+				++itField;
 			}
 			if (ixCol != 0)
-				throw std::runtime_error("?excess tokens?");
+				throw std::runtime_error("?excess field?");
 		}
 
-		static void importOneToken(importJob &j, const string &token) {
+		static void importOneField(importJob &j, const string &token) {
 			if (j.handlerFun == NULL)
 				return;
 			j.handlerFun(j, token);
