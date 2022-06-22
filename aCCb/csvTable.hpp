@@ -62,11 +62,11 @@ public:
 		}
 	}; // class importSpec
 
-	static void csvTable(std::istream &is, importSpec &spec) {
+	static void csvTable(std::istream &is, importSpec &spec, li::vecMap& result) {
 		vector<string> fields;
 		size_t nCols;
 		csvTable(is, spec, /*out*/fields, /*out*/nCols);
-		vecMapCsvLoader l(fields, nCols, spec);
+		result = vecMapCsvLoader(fields, nCols, spec);
 	}
 protected:
 	static void csvTable(std::istream &is, importSpec &spec, /*out*/vector<string> &fields, /*out*/size_t &nColumns) {
