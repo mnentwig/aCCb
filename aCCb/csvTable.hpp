@@ -56,131 +56,138 @@ public:
 		vector<string> colName;
 		vector<void (*)(const string&)> inputHandler;
 		template<typename T> static void put(vector<T> vec, size_t index, T elem) {
-			while (vec.size() <= index)
+			if (vec.size() <= index)
 				vec.resize(index + 1);
 			vec[index] = elem;
 		}
 	}; // class importSpec
 
-	static void csvTable(std::istream &is, importSpec &spec, li::vecMap& result) {
+	static void loadCsvTable(std::istream &is, importSpec &spec, li::vecMap &result) {
 		vector<string> fields;
-		size_t nCols;
-		csvTable(is, spec, /*out*/fields, /*out*/nCols);
-		result = vecMapCsvLoader(fields, nCols, spec);
+		vecMapCsvLoader resultInternal = vecMapCsvLoader(spec);
+
+		// optionally parse header here into spec
+
+		csvTableRow r(spec.sep);
+		while (true) {
+			if (!r.read(is))
+				break;
+			resultInternal.importRow(r.fields);
+		}
+
+		// === cut the CSV-specific loader part ===
+		result = resultInternal;
 	}
 protected:
-	static void csvTable(std::istream &is, importSpec &spec, /*out*/vector<string> &fields, /*out*/size_t &nColumns) {
-		// translate sep (argument) to SEP (constant token)
-		const int sep = spec.sep;
-		const int SEP = EOF - 1;
-		// check consistent column count in all rows
-		size_t commonNCols = 0;
-		// whether common column count has already been determined
-		bool commonNColsSet = false;
-		// columns in current row
-		size_t nColsRow = 0;
-		string tmp;
+	class csvTableRow {
+	public:
+		csvTableRow(int sep) :
+				fields(), nColumns(-1), sep(sep) {
+		}
 
-		// === 'quoted' state ===
-		// - entered by double quotes as first character in field
-		// - exited by double quote then field terminator
-		// - in quoted state, two consecutive double quotes are a literal double quote
-		//   - in this case, the first double quote transitions QUOTE_OPEN => QUOTE_CLOSED_UNTERMINATED
-		//   - the second double quote transitions QUOTE_CLOSED_UNTERMINATED => QUOTE_OPEN and inserts the literal double quote
+		// read one line from a csv-style file. Returns false on EOF with no data, otherwise true
+		bool read(std::istream &is) {
+			this->fields.clear();
+			if (is.eof())
+				return false;
+
+			// === 'quoted' state ===
+			// - entered by double quotes as first character in field
+			// - exited by double quote then field terminator
+			// - in quoted state, two consecutive double quotes are a literal double quote
+			//   - in this case, the first double quote transitions QUOTE_OPEN => QUOTE_CLOSED_UNTERMINATED
+			//   - the second double quote transitions QUOTE_CLOSED_UNTERMINATED => QUOTE_OPEN and inserts the literal double quote
+			quoteState_e quoteState = QUOTE_OFF;
+
+			string tmp;
+
+			// translate sep (argument) to SEP (constant token)
+			const int SEP = EOF - 1;
+
+			// === main loop: ===
+			// Iterate over input characters
+			bool running = true;
+			while (running) {
+				int cInt = is.get();
+
+				switch (quoteState) {
+				case QUOTE_OFF:
+				case QUOTE_CLOSED_UNTERMINATED:
+
+					if (cInt == EOF) {
+						// === EOF handling ===
+						// break outer loop
+						running = false;
+						if ((this->fields.size() == 0) && (tmp.size() == 0)) {
+							// EOF on empty row: break outer loop immediately
+							return false;
+						} else {
+							// EOF on non-empty row: handle as newline, then break outer loop
+							cInt = '\n';
+						}
+					} else if (cInt == sep) {
+						// === field separator detection ===
+						cInt = SEP;					// constant for "case SEP:" below
+					}
+
+					switch (cInt) {
+					case '"':
+						if (quoteState == QUOTE_OFF) {
+							// opens quoted string
+							quoteState = QUOTE_OPEN;
+						} else /*if (quoteState == QUOTE_CLOSED_UNTERMINATED) */{
+							// two consecutive '"' insert a literal '"'
+							tmp.push_back(cInt);
+							quoteState = QUOTE_OPEN;
+						}
+						break;
+					case '\r':
+						// suppress windows \r from \r\n
+						break;
+					case SEP:					// end-of-field
+						this->fields.push_back(tmp);
+						tmp = "";
+						quoteState = QUOTE_OFF;
+						break;
+					case '\n':					// end-of-line
+						this->fields.push_back(tmp);
+						return true;
+					default:
+						// any data
+						if (quoteState == QUOTE_CLOSED_UNTERMINATED)
+							throw std::runtime_error("unexpected data after double quote in quoted string");
+						tmp.push_back(cInt);
+					}
+					break; // quoteState == QUOTE_OFF or QUOTE_CLOSED_UNTERMINATED
+				case QUOTE_OPEN:
+					switch (cInt) {
+					case EOF:
+						throw std::runtime_error("EOF in quoted string");
+					case '"':
+						quoteState = QUOTE_CLOSED_UNTERMINATED;
+						break;
+					default:
+						// anything except quote character is literal data
+						tmp.push_back(cInt);
+					} // switch (cIn)
+					break; // quoteState == QUOTE_OPEN
+				} // switch quoteState
+				  // switch (quoted)
+			} // while running
+			return true;
+		}
+
+		//* line contents after read() */
+		vector<string> fields;
+		// whether nColumns has already been set
+		bool nColumnsSet = false;
+		size_t nColumns;
+		// separator character
+		int sep;
 		enum quoteState_e {
 			QUOTE_OFF, QUOTE_OPEN, QUOTE_CLOSED_UNTERMINATED
 		};
-		quoteState_e quoteState = QUOTE_OFF;
-
-		// === main loop: ===
-		// Iterate over input characters
-		bool running = true;
-		while (running) {
-			int cInt = is.get();
-
-			switch (quoteState) {
-			case QUOTE_OFF:
-			case QUOTE_CLOSED_UNTERMINATED:
-
-				if (cInt == EOF) {
-					// === EOF handling ===
-					// break outer loop
-					running = false;
-					if ((nColsRow == 0) && (tmp.size() == 0)) {
-						// EOF on empty row: break outer loop immediately
-						break;
-					} else {
-						// EOF on non-empty row: handle as newline, then break outer loop
-						cInt = '\n';
-					}
-				} else if (cInt == sep) {
-					// === field separator detection ===
-					cInt = SEP;					// constant for "case SEP:" below
-				}
-
-				switch (cInt) {
-				case '"':
-					if (quoteState == QUOTE_OFF) {
-						// opens quoted string
-						quoteState = QUOTE_OPEN;
-					} else /*if (quoteState == QUOTE_CLOSED_UNTERMINATED) */{
-						// two consecutive '"' insert a literal '"'
-						tmp.push_back(cInt);
-						quoteState = QUOTE_OPEN;
-					}
-					break;
-				case '\r':
-					// suppress windows \r from \r\n
-					break;
-				case SEP:					// end-of-field
-					fields.push_back(tmp);
-					tmp = "";
-					++nColsRow;
-					quoteState = QUOTE_OFF;
-					break;
-				case '\n':					// end-of-line
-					fields.push_back(tmp);
-					++nColsRow;
-					quoteState = QUOTE_OFF;
-					tmp = "";
-
-					if (!commonNColsSet) {
-						commonNCols = nColsRow; // first row determines common nFields
-						commonNColsSet = true;
-					} else {
-						if (nColsRow != commonNCols)
-							throw std::runtime_error("inconsistent number of fields");
-					}
-					nColsRow = 0;
-					break;
-				default:
-					// any data
-					if (quoteState == QUOTE_CLOSED_UNTERMINATED)
-						throw std::runtime_error("unexpected data after double quote in quoted string");
-					tmp.push_back(cInt);
-				}
-				break; // quoteState == QUOTE_OFF or QUOTE_CLOSED_UNTERMINATED
-			case QUOTE_OPEN:
-				switch (cInt) {
-				case EOF:
-					throw std::runtime_error("EOF in quoted string");
-				case '"':
-					quoteState = QUOTE_CLOSED_UNTERMINATED;
-					break;
-				default:
-					// anything except quote character is literal data
-					tmp.push_back(cInt);
-				} // switch (cIn)
-				break; // quoteState == QUOTE_OPEN
-			} // switch quoteState
-			  // switch (quoted)
-		} // while not EOF
-
-		for (auto x : fields) {
-			std::cout << "'" << x << "'\n" << std::flush;
-		}
-		nColumns = commonNCols;
-	}
+	};
 
 	// ===================================================================
 	// vecMapCsvLoader
@@ -228,12 +235,9 @@ protected:
 		const colType_e colType_INT64 = colType_e::INT64;
 
 	public:
-		vecMapCsvLoader(vector<string> fields, size_t nCols, importSpec &spec) {
-
-			// === set up parser function per column ===
-			vector<importJob> importJobsByCol;
-
-			for (size_t ixCol = 0; ixCol < nCols; ++ixCol) {
+		vecMapCsvLoader(importSpec &spec) :
+				importJobsByCol() {
+			for (size_t ixCol = 0; ixCol < spec.colName.size(); ++ixCol) {
 				string &colName = spec.colName[ixCol];
 
 				// === skip unused columns ===
@@ -317,30 +321,25 @@ protected:
 				job.colType = colType;
 				aCCb::containerUtils::putAtVal(importJobsByCol, job, ixCol);
 			} // for columns
-
-			// === parse all fields ===
-			auto itField = fields.cbegin();
-			auto itEnd = fields.cend();
-			size_t ixCol = 0;
-			while (itField != itEnd) {
-				if (ixCol < importJobsByCol.size())
-					importOneField(importJobsByCol[ixCol], *itField);
-
-				++ixCol;
-				if (ixCol == nCols)
-					ixCol = 0;
-				++itField;
-			}
-			if (ixCol != 0)
-				throw std::runtime_error("?excess field?");
 		}
 
+		void importRow(vector<string> &fields) {
+			// === parse all fields ===
+			size_t ixCol = 0;
+			const size_t ixColMax = std::min(this->importJobsByCol.size(), fields.size());
+			for (ixCol = 0; ixCol < ixColMax; ++ixCol) {
+				importOneField(this->importJobsByCol[ixCol], fields[ixCol]);
+			}
+		}
+	protected:
 		static void importOneField(importJob &j, const string &token) {
 			if (j.handlerFun == NULL)
 				return;
 			j.handlerFun(j, token);
 		}
+		// parser function per column
+		vector<importJob> importJobsByCol;
 	};
-	// class vecMapLoader
+// class vecMapLoader
 };
 // class tableFactory

@@ -1,8 +1,9 @@
 #include <iostream>
 #include <sstream>
+#include <string>
 #include "../aCCb/csvTable.hpp"
 #include "../aCCb/stringToNum.hpp"
-
+using std::string;
 int mainB() {
 
 	//std::istringstream csv("one,two,three\n\r\"four, four\nmore four\",five,six\nseven,eight,\"nine\"\r\n");
@@ -13,7 +14,15 @@ int mainB() {
 	s.registerColumn(2, "colThree", s.colType_INT64);
 	s.registerColumn(3, "colFour", s.colType_FLOAT);
 	li::vecMap table;
-	tableFactory::csvTable(csv, s, /*out*/table);
+	tableFactory::loadCsvTable(csv, s, /*out*/table);
+	vector<string> c0 = table.get("colOne");
+	vector<uint8_t> c1 = table.get("colTwo");
+	for (auto v : c0) {
+		std::cout << v << "\n";
+	}
+	for (auto v : c1) {
+		std::cout << ((int)v) << "-\n";
+	}
 	return 0;
 }
 

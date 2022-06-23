@@ -37,7 +37,7 @@ template<class T, class tKey> unordered_map<tKey, vector<T>> applyIndexKnownPopc
 template<class T> vector<T>& getFieldOrThrow(unordered_map<string, vector<T>> &data, const string key) {
 	auto it = data.find(key);
 	if (it == data.end())
-		throw runtime_error("field does not exist");
+		throw runtime_error("field of requested type does not exist");
 	return it->second;
 }
 
@@ -195,6 +195,14 @@ public:
 	template<typename T> void set(const string key, vector<T> &data) {
 		this->initializeCheck(data.size());
 		this->setInternal(key, data);
+	}
+
+	vector<string>& get_string(const string key) {
+		return logicalIndexing::details::getFieldOrThrow<string>(this->data_string, key);
+	}
+
+	vector<float>& get_float(const string key) {
+		return logicalIndexing::details::getFieldOrThrow<float>(this->data_float, key);
 	}
 
 	enum colType_e {
