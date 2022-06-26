@@ -66,6 +66,16 @@ delete element k: This works, because vector has random-access iterators
 vec.erase(vec.begin() + k);
 ```
 
+vector from iterator: Use iterator-based constructor e.g. vector<...>(it.begin(), it.end()).
+
+Can give arguments to constructor for return value in list e.g. 
+
+```
+vector<..> myFun(){ 
+	return {it.begin(), it.end()};
+}
+```
+
 ## Notes: unordered
 * std::iota(v.begin(), v.end(), startval) <numeric> fill with increasing numbers // iota refers to greek letter
 * std::next_permutation(v.begin(), v.end()) <algorithm> swaps elements and returns true unless elements are sorted

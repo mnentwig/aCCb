@@ -30,27 +30,31 @@ static vector<string> splitToLines_STL(const string contents) {
 }
 #pragma GCC diagnostic pop
 
+std::vector<std::string> splitRegex(const std::string str, const std::string regex_str) {
+	return {std::sregex_token_iterator(str.begin(), str.end(), std::regex(regex_str), -1), /*equiv. to end()*/std::sregex_token_iterator()};
+}
+
 inline vector<string> splitToLines(const string contents) {
 	vector<string> retval;
 
 	size_t start = 0;
 	char cPrev = 0; // startup: '\0 is not \r'
 	size_t ix;
-	for (ix = 0; ix < contents.length(); ++ix){
+	for (ix = 0; ix < contents.length(); ++ix) {
 		char c = contents[ix];
-		if (c == '\n'){
+		if (c == '\n') {
 			size_t end = ix;
 			if (cPrev == '\r')
 				--end;
-			std::string_view v(&contents[start], end-start);
+			std::string_view v(&contents[start], end - start);
 			retval.emplace(retval.end(), v);
-			start = ix+1;
+			start = ix + 1;
 		}
 		cPrev = c;
 	}
 	assert(ix == contents.length());
 	assert(start <= ix);
-	std::string_view v(&contents[start], ix-start);
+	std::string_view v(&contents[start], ix - start);
 	retval.emplace(retval.end(), v);
 	return retval;
 }
