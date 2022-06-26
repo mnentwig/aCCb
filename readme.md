@@ -165,3 +165,10 @@ append known sentry token and use std::istringstream >> myVar. Then check ss.goo
 ## Notes: istream
 * use return value e.g. bool flag = (is >> val);
 * default locale is "classic" C
+
+## Notes: "Structured bindings", "if initializer" (C++17)
+```
+if (auto [iter, succeeded] = mymap.insert(value); succeeded) {
+    doSomethingWith(iter); // also available in "else" clause
+}
+```
