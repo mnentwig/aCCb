@@ -76,6 +76,12 @@ template<class T> vector<bool> generateIndex(const vector<T> data, bool (*expr)(
 
 /** "and" operation between two logical vectors */
 vector<bool> logicalAnd(const vector<bool> &arg1, const vector<bool> &arg2) {
+	// === empty vector: Default value (returns other argument) ===
+	if (arg1.size() == 0)
+		return arg2;
+	if (arg2.size() == 0)
+		return arg1;
+
 	assert(arg1.size() == arg2.size());
 	vector<bool> retVal;
 	retVal.reserve(arg1.size());
@@ -88,6 +94,12 @@ vector<bool> logicalAnd(const vector<bool> &arg1, const vector<bool> &arg2) {
 
 /** "or" operation between two logical vectors */
 vector<bool> logicalOr(const vector<bool> &arg1, const vector<bool> &arg2) {
+	// === empty vector: Default value (returns other argument) ===
+	if (arg1.size() == 0)
+		return arg2;
+	if (arg2.size() == 0)
+		return arg1;
+
 	assert(arg1.size() == arg2.size());
 	vector<bool> retVal;
 	retVal.reserve(arg1.size());
@@ -100,6 +112,12 @@ vector<bool> logicalOr(const vector<bool> &arg1, const vector<bool> &arg2) {
 
 /** "xor" operation between two logical vectors */
 vector<bool> logicalXor(const vector<bool> &arg1, const vector<bool> &arg2) {
+	// === empty vector: Default value (returns other argument) ===
+	if (arg1.size() == 0)
+		return arg2;
+	if (arg2.size() == 0)
+		return arg1;
+
 	assert(arg1.size() == arg2.size());
 	vector<bool> retVal;
 	retVal.reserve(arg1.size());

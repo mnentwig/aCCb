@@ -30,8 +30,9 @@ static vector<string> splitToLines_STL(const string contents) {
 }
 #pragma GCC diagnostic pop
 
-std::vector<std::string> splitRegex(const std::string str, const std::string regex_str) {
-	return {std::sregex_token_iterator(str.begin(), str.end(), std::regex(regex_str), -1), /*equiv. to end()*/std::sregex_token_iterator()};
+inline std::vector<std::string> splitRegex(const std::string str, const std::string regex_str) {
+	std::regex r(regex_str); // cannot use a temporary expression (one-liner)
+	return {std::sregex_token_iterator(str.begin(), str.end(), r, -1), /*equiv. to end()*/std::sregex_token_iterator()};
 }
 
 inline vector<string> splitToLines(const string contents) {
