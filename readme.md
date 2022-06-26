@@ -87,6 +87,27 @@ A more sophisticated threadpool library is usually (but not always!) faster, see
 * The std::async pattern stalls at > 100k pending jobs.
 * Note that std::async does not allow arguments to be passed by reference. Reportedly, std::ref() is dangerous.
 
+## Notes: Simple use of async
+```
+#include <iostream>
+#include <vector>
+#include <future>
+
+int testfun(int a, int b) {
+	return a * b;
+}
+
+int main(int argc, char **argv) {
+	std::vector<std::future<int>> futs;
+
+	for (int ix = 0; ix < 1000; ++ix)
+		futs.push_back(std::async(testfun, /*a*/ix, /*b*/ix + 1));
+
+	for (int ix = 0; ix < futs.size(); ++ix)
+		std::cout << futs[ix].get() << "\n";
+}
+```
+
 ## Useful 3rd party libraries (open source, single file)
 * https://github.com/bshoshany/thread-pool Barak Shoshany, "A C++17 Thread Pool for High-Performance Scientific Computing"
 * https://github.com/doctest Viktor Kirilov and contributors
