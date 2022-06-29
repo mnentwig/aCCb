@@ -84,7 +84,8 @@ vector<..> myFun(){
 aCCb::MultithreadDispatcher shows a very straightforward multithreading pattern with std::async and std::future. 
 A more sophisticated threadpool library is usually (but not always!) faster, see "BS_Thread_Pool.hpp" in "3rdParty".
 * Both throw exceptions into the original thread at "get()" called on the future.
-* The std::async pattern stalls at > 100k pending jobs.
+* The std::async pattern stalls at > 100k pending jobs. It is largely useless for short (sub-ms) jobs.
+* A thread pool implementation (see 3rd party references) can be used even for short jobs and will give a notable speed increase.
 * Note that std::async does not allow arguments to be passed by reference. Reportedly, std::ref() is dangerous.
 
 ## Notes: Simple use of async
@@ -165,6 +166,13 @@ append known sentry token and use std::istringstream >> myVar. Then check ss.goo
 ## Notes: istream
 * use return value e.g. bool flag = (is >> val);
 * default locale is "classic" C
+
+## Notes: Warnings
+* Use -Wall -Wextra -Wconversion -Wsign-conversion -Wpedantic -Weffc++ -Wshadow
+
+## Notes: Popcount
+* Use std::bitset<myBitwidth>(myValue).count() or c++20 std::popcount
+* __builtin_popcount() is 32 bit only! 
 
 ## Notes: "Structured bindings", "if initializer" (C++17)
 ```
