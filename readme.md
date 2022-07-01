@@ -26,6 +26,8 @@ Use following setting for compact indentation:
 
 [[doc/vsCode_setIndent.png]]
 
+<img src="doc/vsCode_setIndent.png">
+
 Press SHIFT-ALT-F to indent whole file.
 
 ## benchmark
