@@ -21,6 +21,11 @@ Consider this "notes-to-self" that may or may not make much sense to someone els
 
 * Breakpoint on thrown exceptions: Debug view, "..." button ("View menu"), "Add event breakpoint (C/C++)", select "exception thrown". Some exceptions e.g. from "std::stoi" are not caught (but "catch throw" to gdb in the "Debugger console" gives the same result (unstandardized binary interface)? If needed, catch and re-throw from own code, then the debugger will detect it.
 
+## VS Code
+Use following setting for compact indentation:
+!{doc/vsCode_setIndent.png}
+Press SHIFT-ALT-F to indent whole file.
+
 ## benchmark
 A simple benchmark on splitting a whole text file:
 * 110 ms STL/regex, debug
