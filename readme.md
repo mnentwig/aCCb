@@ -28,6 +28,8 @@ Use following setting for compact indentation:
 
 <img src="doc/vsCode_setIndent.png">
 
+That is, set C_Cpp.clang_format_fallbackStyle to { BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0}
+
 Press SHIFT-ALT-F to indent whole file.
 
 ## benchmark
