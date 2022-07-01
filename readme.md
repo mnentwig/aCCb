@@ -23,7 +23,7 @@ Consider this "notes-to-self" that may or may not make much sense to someone els
 
 ## VS Code
 Use following setting for compact indentation:
-!{doc/vsCode_setIndent.png}
+![alt]{/assets/doc/vsCode_setIndent.png}
 Press SHIFT-ALT-F to indent whole file.
 
 ## benchmark
