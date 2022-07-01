@@ -24,8 +24,6 @@ Consider this "notes-to-self" that may or may not make much sense to someone els
 ## VS Code
 Use following setting for compact indentation:
 
-[[doc/vsCode_setIndent.png]]
-
 <img src="doc/vsCode_setIndent.png">
 
 That is, set C_Cpp.clang_format_fallbackStyle to { BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0}
