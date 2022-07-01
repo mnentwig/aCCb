@@ -30,6 +30,8 @@ That is, set C_Cpp.clang_format_fallbackStyle to { BasedOnStyle: Google, IndentW
 
 Press SHIFT-ALT-F to indent whole file.
 
+F12: goto definition
+
 ## benchmark
 A simple benchmark on splitting a whole text file:
 * 110 ms STL/regex, debug
