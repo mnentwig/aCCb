@@ -7,6 +7,9 @@ Looking the same things up again and again on Stackexchange gets tiresome, so I 
 
 Consider this "notes-to-self" that may or may not make much sense to someone else.
 
+## MinGW
+* Always compile -static otherwise the executable may fail from a 'foreign' MSYS shell e.g. the one that comes with GIT
+
 ## Eclipse
 * Eclipse*s own build system makes it cumbersome to maintain a large number of executables in one project (need to manually set file exclusion for every toplevel .cpp file after adding a new toplevel file).
 
@@ -30,7 +33,27 @@ That is, set C_Cpp.clang_format_fallbackStyle to { BasedOnStyle: Google, IndentW
 
 Press SHIFT-ALT-F to indent whole file.
 
-F12: goto definition
+F12: goto definition (CTRL-u: go back)
+
+ALT-F12: peek at definition (ESC closes)
+
+SHIFT-F12: references
+
+F2: rename (all files, often not too useful)
+
+CTRL-F2: Rename locally
+
+SHIFT-CTRL-o: outline (to navigate quickly)
+
+Switch editor left-/right: CTRL-pageup or -pagedown
+
+Hide left (primary) side bar: CTRL-b
+
+Hide bottom side bar: CTRL-j
+
+Run main from .cpp file in current editor: Button at top right of screen ("Run" or "Debug" C++ file)
+
+Shift-Ctrl-V: Open preview of Readme.md
 
 ## benchmark
 A simple benchmark on splitting a whole text file:
@@ -100,6 +123,7 @@ A more sophisticated threadpool library is usually (but not always!) faster, see
 * Note that std::async does not allow arguments to be passed by reference. Reportedly, std::ref() is dangerous.
 
 ## Notes: Simple use of async
+This is largely useless for short (sub-ms) jobs, need to reuse threads (pool) instead.
 ```
 #include <iostream>
 #include <vector>
