@@ -196,7 +196,7 @@ Derived class T introduces an intermediate class with common code using template
 * "declval" in such an expression provides access to objects and methods without requiring a constructor
 
 ## Notes: String to number
-append known sentry token and use std::istringstream >> myVar. Then check ss.good() than read string and confirm sentry token (>> will silently eat whitespace on both sides)
+std::istringstream >> myVar works "almost" but fails silently on negative values for unsigned types. See str2num implementation.
 
 ## Notes: istream
 * use return value e.g. bool flag = (is >> val);
@@ -215,3 +215,11 @@ if (auto [iter, succeeded] = mymap.insert(value); succeeded) {
     doSomethingWith(iter); // also available in "else" clause
 }
 ```
+## Notes: "Eigen"
+* Use -arch=native flag
+* Use -fopenmp
+* -O(1) compiles 1/3 faster than -O0
+
+## Notes: Templates
+* if constexpr (...)
+* e.g. std::is_unsigned_v<T> , std::is_integral_v<T>, , std::is_arithmetic_v<T> (has + - etc operators)

@@ -7,10 +7,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-using std::cerr, std::cout, std::endl;
-using std::regex;
-using std::string;
-using std::vector;
+using std::cerr, std::cout, std::endl, std::regex, std::string, std::vector;
 class cmdLineArgs {
    public:
     cmdLineArgs(int argc, char** argv) : execName(argc > 0 ? argv[0] : "?? missing executable name ??") {
@@ -106,9 +103,9 @@ class cmdLineArgs {
    public:
     void usage(const string message) {
         cmdLineArgs defaults(0, NULL);  // dummy object to retrieve unmodified default values
-        cerr << message << endl;
+        if (!message.empty())
+            cerr << message << endl << endl;
         cerr << "usage:" << endl;
-
         cerr << "-exampleInt=xyz    accepts signed int (default: " << std::to_string(defaults.exampleInt) << endl;
         cerr << "-exampleUInt=xyz   accepts unsigned int (default: " << std::to_string(defaults.exampleUInt) << endl;
         cerr << "-exampleFloat      accepts float" << endl;

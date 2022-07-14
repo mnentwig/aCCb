@@ -25,11 +25,11 @@ MY_BUILDFLAGS = -std=c++17 -Wall -Wfatal-errors -Wextra -Wpedantic  -Weffc++
 #-Wsign-conversion -Weffc++ -Wshadow
 # Eclipse passes debug/release build via this variable
 ifeq ($(BUILD_MODE),debug)
-	CFLAGS += -O0 -g ${MY_BUILDFLAGS}
+	CFLAGS += -O1 -g ${MY_BUILDFLAGS}
 else ifeq ($(BUILD_MODE),run)
 	CFLAGS += -O3 -Wall -DNDEBUG ${MY_BUILDFLAGS}
 else
-	CFLAGS += -O0 -g ${MY_BUILDFLAGS}
+	CFLAGS += -O1 -g ${MY_BUILDFLAGS}
 endif
 LDFLAGS += -static
 
