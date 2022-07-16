@@ -1,9 +1,12 @@
+// a minimal selection of FLTK features 
+
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Check_Button.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Input.H>
+#include <FL/Fl_Float_Input.H>
 class aCCbWidget : public Fl_Box {
    public:
     enum curMove_e {
@@ -87,6 +90,17 @@ class aCCbWidget : public Fl_Box {
         operator Fl_Input *() {
             cursor &c = parent->cur;
             Fl_Input *r = new Fl_Input(c.x, c.y, c.w, c.h, label);
+            r->callback((Fl_Callback *)cbHandlerInp, (void *)parent);
+            r->labelcolor(parent->labelcolor());
+            r->align(FL_ALIGN_TOP_LEFT);
+            c.move(mv, dx, dy);
+            return r;
+        }
+
+        operator Fl_Float_Input *() {
+            cursor &c = parent->cur;
+            Fl_Float_Input *r = new Fl_Float_Input(c.x, c.y, c.w, c.h, label);
+            r->callback((Fl_Callback *)cbHandlerInp, (void *)parent);
             r->labelcolor(parent->labelcolor());
             r->align(FL_ALIGN_TOP_LEFT);
             c.move(mv, dx, dy);

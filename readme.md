@@ -199,7 +199,7 @@ Derived class T introduces an intermediate class with common code using template
 std::istringstream >> myVar works "almost" but fails silently on negative values for unsigned types. See str2num implementation.
 
 ## Notes: istream
-* use return value e.g. bool flag = (is >> val);
+* use return value e.g. bool flag = (is >> val); Caveats, see above.
 * default locale is "classic" C
 
 ## Notes: Warnings
@@ -223,3 +223,6 @@ if (auto [iter, succeeded] = mymap.insert(value); succeeded) {
 ## Notes: Templates
 * if constexpr (...)
 * e.g. std::is_unsigned_v<T> , std::is_integral_v<T>, , std::is_arithmetic_v<T> (has + - etc operators)
+
+## Command line parser
+See examples/cmdLineParser.cpp
