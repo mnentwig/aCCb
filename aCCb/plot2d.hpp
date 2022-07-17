@@ -19,14 +19,14 @@
 namespace aCCb {
 using std::vector, std::string, std::array, std::unordered_set, std::cout, std::endl;
 class plot2d : public Fl_Box {
-    float mouseDownDataX;
-    float mouseDownDataY;
+    double mouseDownDataX;
+    double mouseDownDataY;
     int handle(int event) {
-        proj p = projDataToScreen();
+        proj<double> p = projDataToScreen<double>();
         int mouseX = Fl::event_x();
         int mouseY = Fl::event_y();
-        float dataX = p.unprojX(mouseX);
-        float dataY = p.unprojY(mouseY);
+        double dataX = p.unprojX(mouseX);
+        double dataY = p.unprojY(mouseY);
         switch (event) {
             case FL_PUSH: {
                 mouseDownDataX = dataX;
@@ -34,8 +34,8 @@ class plot2d : public Fl_Box {
                 return 1;
             }
             case FL_DRAG: {
-                float dx = dataX - mouseDownDataX;
-                float dy = dataY - mouseDownDataY;
+                double dx = dataX - mouseDownDataX;
+                double dy = dataY - mouseDownDataY;
                 x0 -= dx;
                 x1 -= dx;
                 y0 -= dy;
@@ -57,10 +57,10 @@ class plot2d : public Fl_Box {
                 double scale = 1.2;
                 if (d < 0)
                     scale = 1 / scale;
-                float deltaX0 = x0 - dataX;
-                float deltaX1 = x1 - dataX;
-                float deltaY0 = y0 - dataY;
-                float deltaY1 = y1 - dataY;
+                double deltaX0 = x0 - dataX;
+                double deltaX1 = x1 - dataX;
+                double deltaY0 = y0 - dataY;
+                double deltaY1 = y1 - dataY;
                 deltaX0 *= scale;
                 deltaY0 *= scale;
                 deltaX1 *= scale;
@@ -79,16 +79,18 @@ class plot2d : public Fl_Box {
     }
 
    protected:
+    template <typename T>
     class proj;
-    proj projDataToScreen() {
+
+    template <typename T>
+    proj<T> projDataToScreen() {
         // bottom left
         int screenX0 = x() + axisMarginLeft;
         int screenY0 = y() + h() - axisMarginBottom;
         // top right
         int screenX1 = x() + w();
         int screenY1 = y();
-        proj p(x0, y0, x1, y1, screenX0, screenY0, screenX1, screenY1);
-        return p;
+        return proj<T>(x0, y0, x1, y1, screenX0, screenY0, screenX1, screenY1);
     }
 
    public:
@@ -96,7 +98,8 @@ class plot2d : public Fl_Box {
         : Fl_Box(x, y, w, h, l), data(NULL) {}
     ~plot2d() {}
 
-    void drawAxes(proj& p) {
+    void drawAxes() {
+        proj<double> p = projDataToScreen<double>();
         vector<double> xAxisDeltas = axisTics::getTicDelta(x0, x1);
         double xAxisDeltaMajor = xAxisDeltas[0];
         double xAxisDeltaMinor = xAxisDeltas[1];
@@ -170,9 +173,9 @@ class plot2d : public Fl_Box {
 
         axisMarginLeft = fontsize;
         axisMarginBottom = fontsize;
-        proj p = projDataToScreen();
+        proj<float> p = projDataToScreen<float>();
 
-        this->drawAxes(p);
+        this->drawAxes();
 
         // === plot ===
         if (data != NULL) {
@@ -191,7 +194,7 @@ class plot2d : public Fl_Box {
                 std::fill(rgba.begin(), rgba.end(), 0);
 
             // === render into a bitmap starting (0, 0) ===
-            const proj pPixmap(x0, y0, x1, y1, /*screenX0*/ 0, /*screenY0*/ height, /*screenX1*/ width, /*screenY1*/ 0);
+            const proj<float> pPixmap(x0, y0, x1, y1, /*screenX0*/ 0, /*screenY0*/ height, /*screenX1*/ width, /*screenY1*/ 0);
 
             // === mark pixels that show a data point ===
             //  O{nData} but can be parallelized. For a 10M dataset, 1000 repetitions: 29 secs 1 thread) > 6 s (8 threads)
@@ -270,35 +273,36 @@ class plot2d : public Fl_Box {
 
    protected:
     //* transformation from data to screen */
+    template <typename T>
     class proj {
-        float dataX0, dataY0, dataX1, dataY1;
+        T dataX0, dataY0, dataX1, dataY1;
         int screenX0, screenY0, screenX1, screenY1;
-        float mXData2screen;
-        float bXData2screen;
-        float mYData2screen;
-        float bYData2screen;
+        T mXData2screen;
+        T bXData2screen;
+        T mYData2screen;
+        T bYData2screen;
         // transformation:
         // screen = (data-data1)/(data2-data1)*(screen2-screen1)+screen1;
         // screen = data * (screen2-screen1)/(data2-data1) + screen1 - data1 * (screen2-screen1)/(data2-data1)
        public:
-        proj(float dataX0, float dataY0, float dataX1, float dataY1, int screenX0, int screenY0, int screenX1, int screenY1) : dataX0(dataX0), dataY0(dataY0), dataX1(dataX1), dataY1(dataY1), screenX0(screenX0), screenY0(screenY0), screenX1(screenX1), screenY1(screenY1), mXData2screen((screenX1 - screenX0) / (dataX1 - dataX0)), bXData2screen(screenX0 - dataX0 * (screenX1 - screenX0) / (dataX1 - dataX0)), mYData2screen((screenY1 - screenY0) / (dataY1 - dataY0)), bYData2screen(screenY0 - dataY0 * (screenY1 - screenY0) / (dataY1 - dataY0)) {}
+        proj(T dataX0, T dataY0, T dataX1, T dataY1, int screenX0, int screenY0, int screenX1, int screenY1) : dataX0(dataX0), dataY0(dataY0), dataX1(dataX1), dataY1(dataY1), screenX0(screenX0), screenY0(screenY0), screenX1(screenX1), screenY1(screenY1), mXData2screen((screenX1 - screenX0) / (dataX1 - dataX0)), bXData2screen(screenX0 - dataX0 * (screenX1 - screenX0) / (dataX1 - dataX0)), mYData2screen((screenY1 - screenY0) / (dataY1 - dataY0)), bYData2screen(screenY0 - dataY0 * (screenY1 - screenY0) / (dataY1 - dataY0)) {}
         //** projects data to screen */
-        inline int projX(float x) const {
+        inline int projX(T x) const {
             return x * mXData2screen + bXData2screen + 0.5f;
         }
         //** projects data to screen */
-        inline int projY(float y) const {
+        inline int projY(T y) const {
             return y * mYData2screen + bYData2screen + 0.5f;
         }
 
         //* projects screen to data */
-        inline float unprojX(int xMouse) const {
+        inline T unprojX(int xMouse) const {
             xMouse = std::min(xMouse, std::max(screenX0, screenX1));
             xMouse = std::max(xMouse, std::min(screenX0, screenX1));
             return (xMouse - bXData2screen) / mXData2screen;
         }
         //* projects screen to data */
-        inline float unprojY(int yMouse) const {
+        inline T unprojY(int yMouse) const {
             yMouse = std::min(yMouse, std::max(screenY0, screenY1));
             yMouse = std::max(yMouse, std::min(screenY0, screenY1));
             return (yMouse - bYData2screen) / mYData2screen;
@@ -385,7 +389,7 @@ class plot2d : public Fl_Box {
         static vector<string> formatTicVals(const vector<double> ticVals) {
             vector<string> ticValsStr;
             for (int precision = 0; precision < 12; ++precision) {
-                ticValsStr = formatTicVals(ticVals, 6);
+                ticValsStr = formatTicVals(ticVals, precision);
                 unordered_set checkDuplicates(ticValsStr.begin(), ticValsStr.end());
                 if (checkDuplicates.size() == ticValsStr.size())
                     break;  // labels are unique
