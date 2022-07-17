@@ -86,6 +86,23 @@ class aCCbWidget : public Fl_Box {
         }
     }
 
+    template <typename T>
+    inline static void line(T x0, T y0, T x1, T y1) {
+        fl_begin_line();
+        fl_vertex(std::floor(x0 + 0.5), std::floor(y0 + 0.5));
+        fl_vertex(std::floor(x1 + 0.5), std::floor(y1 + 0.5));
+        fl_end_line();
+    }
+
+    template <typename T>
+    inline static void line(T x0, T y0, T x1, T y1, T x2, T y2) {
+        fl_begin_line();
+        fl_vertex(std::floor(x0 + 0.5), std::floor(y0 + 0.5));
+        fl_vertex(std::floor(x1 + 0.5), std::floor(y1 + 0.5));
+        fl_vertex(std::floor(x2 + 0.5), std::floor(y2 + 0.5));
+        fl_end_line();
+    }
+
    protected:
     Fl_Color colorLabel = FL_GREEN;
     virtual void callbackCheckbutton(Fl_Check_Button *w) {}

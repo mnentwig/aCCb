@@ -224,5 +224,8 @@ if (auto [iter, succeeded] = mymap.insert(value); succeeded) {
 * if constexpr (...)
 * e.g. std::is_unsigned_v<T> , std::is_integral_v<T>, , std::is_arithmetic_v<T> (has + - etc operators)
 
+## Notes: Float
+In a float calculation, use the 'f' postfix diligently on constants. Otherwise, conversion to double may cause a significant performance penalty.
+
 ## Command line parser
 See examples/cmdLineParser.cpp
