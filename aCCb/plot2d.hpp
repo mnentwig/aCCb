@@ -388,7 +388,7 @@ class plot2d : public Fl_Box {
 
         static vector<string> formatTicVals(const vector<double> ticVals) {
             vector<string> ticValsStr;
-            for (int precision = 0; precision < 12; ++precision) {
+            for (int precision = -1; precision < 12; ++precision) {
                 ticValsStr = formatTicVals(ticVals, precision);
                 unordered_set checkDuplicates(ticValsStr.begin(), ticValsStr.end());
                 if (checkDuplicates.size() == ticValsStr.size())
@@ -400,7 +400,11 @@ class plot2d : public Fl_Box {
        protected:
         static vector<string> formatTicVals(const vector<double> vals, int precision) {
             std::stringstream ss;
-            ss.precision(precision);
+            if (precision < 0) {
+                ss << std::fixed;
+                ss.precision(0);
+            } else
+                ss.precision(precision);
             vector<string> r;
             for (double v : vals) {
                 ss.str(std::string());  // clear
