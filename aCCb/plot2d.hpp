@@ -17,16 +17,64 @@
 namespace aCCb {
 using std::vector, std::string, std::array, std::unordered_set, std::cout, std::endl;
 class plot2d : public Fl_Box {
+    int handle(int event) {
+        proj p = projDataToScreen();
+        int mouseX = Fl::event_x();
+        int mouseY = Fl::event_y();
+        float dataX = p.unprojX(mouseX);
+        float dataY = p.unprojY(mouseY);
+        switch (event) {
+            case FL_PUSH:
+                break;
+            case FL_RELEASE:
+                break;
+            case FL_MOUSEWHEEL: {
+                int d = Fl::event_dy();
+                if (d == 0)
+                    return 0;  // did not use event (other axis)
+                double scale = 1.2;
+                if (d < 0)
+                    scale = 1 / scale;
+                float deltaX0 = x0 - dataX;
+                float deltaX1 = x1 - dataX;
+                float deltaY0 = y0 - dataY;
+                float deltaY1 = y1 - dataY;
+                deltaX0 *= scale;
+                deltaY0 *= scale;
+                deltaX1 *= scale;
+                deltaY1 *= scale;
+                x0 = deltaX0 + dataX;
+                y0 = deltaY0 + dataY;
+                x1 = deltaX1 + dataX;
+                y1 = deltaY1 + dataY;
+                redraw();
+                return 1;
+            }
+
+            break;
+        }
+        return 0;  // did not use event
+    }
+
+   protected:
+    class proj;
+    proj projDataToScreen() {
+        // bottom left
+        int screenX0 = x() + axisMarginLeft;
+        int screenY0 = y() + h() - axisMarginBottom;
+        // top right
+        int screenX1 = x() + w();
+        int screenY1 = y();
+        proj p(x0, y0, x1, y1, screenX0, screenY0, screenX1, screenY1);
+        return p;
+    }
+
    public:
     plot2d(int x, int y, int w, int h, const char* l = 0)
         : Fl_Box(x, y, w, h, l), data(NULL) {}
     ~plot2d() {}
 
-    void draw() {
-        this->Fl_Box::draw();
-        axisMarginLeft = fontsize;
-        axisMarginBottom = fontsize;
-
+    void drawAxes(proj& p) {
         vector<double> xAxisDeltas = axisTics::getTicDelta(x0, x1);
         double xAxisDeltaMajor = xAxisDeltas[0];
         double xAxisDeltaMinor = xAxisDeltas[1];
@@ -34,19 +82,8 @@ class plot2d : public Fl_Box {
         vector<double> xAxisTicsMajor = axisTics::getTicVals(x0, x1, xAxisDeltaMajor);
         vector<double> xAxisTicsMinor = axisTics::getTicVals(x0, x1, xAxisDeltaMinor);
 
-        // bottom left
-        double screenX0 = x() + axisMarginLeft;
-        double screenY0 = y() + h() - axisMarginBottom;
-        // top right
-        double screenX1 = x() + w();
-        double screenY1 = y();
-
-        fl_line_style(FL_SOLID);
-        fl_color(FL_GREEN);
-
-        proj p(x0, y0, x1, y1, screenX0, screenY0, screenX1, screenY1);
-
         // === draw axes ===
+        fl_push_clip(x(), y(), w(), h());
         aCCbWidget::line(
             p.projX(x0), p.projY(y1),   // top left
             p.projX(x0), p.projY(y0),   // bottom left
@@ -60,6 +97,11 @@ class plot2d : public Fl_Box {
         vector<string> xAxisTicsMajorStr = axisTics::formatTicVals(xAxisTicsMajor);
         for (int ix = 0; ix < xAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             double ticX = xAxisTicsMajor[ix];
+
+            fl_color(FL_DARK_GREEN);
+            aCCbWidget::line(p.projX(ticX), p.projY(y0), p.projX(ticX), p.projY(y1));
+
+            fl_color(FL_GREEN);
             aCCbWidget::line(p.projX(ticX), p.projY(y0), p.projX(ticX), p.projY(y0) - majorTicLength);
             string ticStr = xAxisTicsMajorStr[ix];
             vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ticStr.c_str());
@@ -82,6 +124,11 @@ class plot2d : public Fl_Box {
         vector<string> yAxisTicsMajorStr = axisTics::formatTicVals(yAxisTicsMajor);
         for (int ix = 0; ix < yAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             double ticY = yAxisTicsMajor[ix];
+
+            fl_color(FL_DARK_GREEN);
+            aCCbWidget::line(p.projX(x0), p.projY(ticY), p.projX(x1), p.projY(ticY));
+            fl_color(FL_GREEN);
+
             aCCbWidget::line(p.projX(x0), p.projY(ticY), p.projX(x0) + majorTicLength, p.projY(ticY));
             string ticStr = yAxisTicsMajorStr[ix];
             vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ticStr.c_str());
@@ -89,14 +136,36 @@ class plot2d : public Fl_Box {
             geom = aCCb::vectorFont::centerY(geom);
             aCCbWidget::renderText(geom, fontsize, p.projX(x0), p.projY(ticY));
         }
+        fl_pop_clip();
+    }
+
+    void draw() {
+        this->Fl_Box::draw();
+        fl_rectf(x(), y(), w(), h(), FL_BLACK);
+
+        fl_line_style(FL_SOLID);
+        fl_color(FL_GREEN);
+
+        axisMarginLeft = fontsize;
+        axisMarginBottom = fontsize;
+        proj p = projDataToScreen();
+
+        this->drawAxes(p);
 
         // === plot ===
         if (data != NULL) {
-            int width = screenX1 - screenX0;
-            int height = screenY0 - screenY1;
+            int width = p.getScreenWidth();
+            int height = p.getScreenHeight();
+            int n = width * height;
+            if (pixels.size() != n)
+                pixels = vector<int>(n);
+            else
+                std::fill(pixels.begin(), pixels.end(), 0);
+            if (rgba.size() != n)
+                rgba = vector<uint32_t>(n);
+            else
+                std::fill(rgba.begin(), rgba.end(), 0);
 
-            vector<int> pixels(width * height);  // int is slightly faster than char
-            vector<uint32_t> rgba(pixels.size());
             const proj pPixmap(x0, y0, x1, y1, /*screenX0*/ 0, /*screenY0*/ height, /*screenX1*/ width, /*screenY1*/ 0);
 
             size_t ixMax = data->size();
@@ -117,7 +186,7 @@ class plot2d : public Fl_Box {
                     rgba[ix] = 0xFF00FF00;
 
             // === render the RGBA image repeatedly, according to the stencil ===
-            fl_push_clip(screenX0, screenY1, width, height);
+            fl_push_clip(p.getScreenX0(), p.getScreenY1(), width, height);
             Fl_RGB_Image im((const uchar*)&rgba[0], width, height, 4);
             const char* tmp = marker;
             int delta = markerSize1d / 2;
@@ -125,7 +194,7 @@ class plot2d : public Fl_Box {
             for (int dy = -delta; dy <= delta; ++dy)
                 for (int dx = -delta; dx <= delta; ++dx)
                     if (*(m++) != ' ')  // any non-space character in the stencil creates a shifted replica
-                        im.draw(screenX0 + dx, screenY1 + dy);
+                        im.draw(p.getScreenX0() + dx, p.getScreenY1() + dy);
             fl_pop_clip();
         }
     }
@@ -154,6 +223,7 @@ class plot2d : public Fl_Box {
     }
 
    protected:
+    //* transformation from data to screen */
     class proj {
         float dataX0, dataY0, dataX1, dataY1;
         int screenX0, screenY0, screenX1, screenY1;
@@ -166,17 +236,47 @@ class plot2d : public Fl_Box {
         // screen = data * (screen2-screen1)/(data2-data1) + screen1 - data1 * (screen2-screen1)/(data2-data1)
        public:
         proj(float dataX0, float dataY0, float dataX1, float dataY1, int screenX0, int screenY0, int screenX1, int screenY1) : dataX0(dataX0), dataY0(dataY0), dataX1(dataX1), dataY1(dataY1), screenX0(screenX0), screenY0(screenY0), screenX1(screenX1), screenY1(screenY1), mXData2screen((screenX1 - screenX0) / (dataX1 - dataX0)), bXData2screen(screenX0 - dataX0 * (screenX1 - screenX0) / (dataX1 - dataX0)), mYData2screen((screenY1 - screenY0) / (dataY1 - dataY0)), bYData2screen(screenY0 - dataY0 * (screenY1 - screenY0) / (dataY1 - dataY0)) {}
+        //** projects data to screen */
         inline int projX(float x) const {
             return x * mXData2screen + bXData2screen + 0.5f;
         }
+        //** projects data to screen */
         inline int projY(float y) const {
             return y * mYData2screen + bYData2screen + 0.5f;
         }
+
+        //* projects screen to data */
+        inline float unprojX(int xMouse) const {
+            xMouse = std::min(xMouse, std::max(screenX0, screenX1));
+            xMouse = std::max(xMouse, std::min(screenX0, screenX1));
+            return (xMouse - bXData2screen) / mXData2screen;
+        }
+        //* projects screen to data */
+        inline float unprojY(int yMouse) const {
+            yMouse = std::min(yMouse, std::max(screenY0, screenY1));
+            yMouse = std::max(yMouse, std::min(screenY0, screenY1));
+            return (yMouse - bYData2screen) / mYData2screen;
+        }
+        inline int getScreenWidth() {
+            return std::abs(screenX1 - screenX0);
+        }
+        inline int getScreenHeight() {
+            return std::abs(screenY1 - screenY0);
+        }
+        inline int getScreenX0() {
+            return screenX0;
+        }
+        inline int getScreenY1() {
+            return screenY1;
+        }
     };
+
+    vector<int> pixels;  // note, int is here slightly faster than char
+    vector<uint32_t> rgba;
 
     const char* marker = "X";
     int markerSize1d = 1;
-    float fontsize = 13;
+    float fontsize = 14;
     int axisMarginLeft;
     int axisMarginBottom;
     const int minorTicLength = 3;
@@ -189,9 +289,11 @@ class plot2d : public Fl_Box {
     double autorange_y0 = 0;
     double autorange_y1 = 1;
     const std::vector<float>* data;
+
+    //* decides where to place the axis tics, formats the text labels */
     class axisTics {
        public:
-        // Determines axis grid. Returns vector with minorTic, majorTic, nextHigherTic (as fallback if majorTic turns out too small)
+        //* Determines axis grid. Returns vector with minorTic, majorTic spacings
         static vector<double> getTicDelta(double startVal, double endVal) {
             double range = std::abs(endVal - startVal);
             double x = 1;
@@ -199,7 +301,7 @@ class plot2d : public Fl_Box {
                 x *= 10;
             vector<double> r;
             double nTarget = 4;  // minimum number
-            while (r.size() < 3) {
+            while (r.size() < 2) {
                 if (nTarget * x < range)
                     r.push_back(x);
                 if (nTarget * x * 0.5 < range)
@@ -212,6 +314,7 @@ class plot2d : public Fl_Box {
             return r;
         }
 
+        //* given a spacing, calculate the absolute tic values */
         static vector<double> getTicVals(double startVal, double endVal, double ticDelta) {
             assert(ticDelta != 0);
             if (startVal < endVal)
@@ -225,7 +328,8 @@ class plot2d : public Fl_Box {
             gridVal -= 2 * ticDelta;  // take one step back as floor may round in the wrong direction, depending on sign
             vector<double> r;
             while (gridVal <= endVal + ticDelta / 2.0) {
-                if (isInRange(startVal - 0.01 * ticDelta, endVal + 0.01 * ticDelta, gridVal))
+                // note: don't make the interval wider, otherwise an axis looks like a tic when it's not.
+                if (isInRange(startVal - 0.001 * ticDelta, endVal + 0.001 * ticDelta, gridVal))
                     r.push_back(gridVal);
                 gridVal += ticDelta;
             }
