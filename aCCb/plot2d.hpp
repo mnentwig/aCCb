@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <cmath>  // isinf
+#include <future>
 #include <iostream>
 #include <limits>  // inf
 #include <sstream>
@@ -14,9 +15,12 @@
 
 #include "vectorText.hpp"
 #include "widget.hpp"
+
 namespace aCCb {
 using std::vector, std::string, std::array, std::unordered_set, std::cout, std::endl;
 class plot2d : public Fl_Box {
+    float mouseDownDataX;
+    float mouseDownDataY;
     int handle(int event) {
         proj p = projDataToScreen();
         int mouseX = Fl::event_x();
@@ -24,8 +28,26 @@ class plot2d : public Fl_Box {
         float dataX = p.unprojX(mouseX);
         float dataY = p.unprojY(mouseY);
         switch (event) {
-            case FL_PUSH:
-                break;
+            case FL_PUSH: {
+                mouseDownDataX = dataX;
+                mouseDownDataY = dataY;
+                return 1;
+            }
+            case FL_DRAG: {
+                float dx = dataX - mouseDownDataX;
+                float dy = dataY - mouseDownDataY;
+                x0 -= dx;
+                x1 -= dx;
+                y0 -= dy;
+                y1 -= dy;
+                dataX -= dx;
+                dataY -= dy;
+                mouseDownDataX = dataX;
+                mouseDownDataY = dataY;
+                redraw();
+                return 1;
+            }
+
             case FL_RELEASE:
                 break;
             case FL_MOUSEWHEEL: {
@@ -154,8 +176,10 @@ class plot2d : public Fl_Box {
 
         // === plot ===
         if (data != NULL) {
+            size_t nData = data->size();
             int width = p.getScreenWidth();
             int height = p.getScreenHeight();
+
             int n = width * height;
             if (pixels.size() != n)
                 pixels = vector<int>(n);
@@ -166,20 +190,42 @@ class plot2d : public Fl_Box {
             else
                 std::fill(rgba.begin(), rgba.end(), 0);
 
+            // === render into a bitmap starting (0, 0) ===
             const proj pPixmap(x0, y0, x1, y1, /*screenX0*/ 0, /*screenY0*/ height, /*screenX1*/ width, /*screenY1*/ 0);
 
-            size_t ixMax = data->size();
-            for (size_t ix = 0; ix < ixMax; ++ix) {
-                float plotX = ix + 1;
-                float plotY = (*data)[ix];
-                int pixX = pPixmap.projX(plotX);
-                int pixY = pPixmap.projY(plotY);
-                if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                    pixels[pixY * width + pixX] = 1;
-            }
+            // === mark pixels that show a data point ===
+            //  O{nData} but can be parallelized. For a 10M dataset, 1000 repetitions: 29 secs 1 thread) > 6 s (8 threads)
+            int nTasks = 1;
+            if (nData < 10000)
+                nTasks = 1;
+            else if (nData < 100000)
+                nTasks = 4;
+            else
+                nTasks = 8;
+
+            vector<std::future<void>> jobs;
+            size_t chunk = std::ceil((float)nData / nTasks);
+            for (int ixTask = 0; ixTask < nTasks; ++ixTask) {
+                size_t taskIxStart = ixTask * chunk;
+                size_t taskIxEnd = std::min(taskIxStart + chunk, nData);
+
+                auto job = [this, width, height, pPixmap, taskIxStart, taskIxEnd]() {
+                    for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
+                        float plotX = (float)(ix + 1);
+                        float plotY = (*data)[ix];
+                        int pixX = pPixmap.projX(plotX);
+                        int pixY = pPixmap.projY(plotY);
+                        if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
+                            pixels[pixY * width + pixX] = 1;
+                    }
+                };
+                jobs.push_back(std::async(job));
+            }  // for ixTask
+            for (auto it = jobs.begin(); it != jobs.end(); ++it)
+                (*it).get();
 
             // === convert to RGBA image ===
-            ixMax = pixels.size();
+            size_t ixMax = pixels.size();
             for (int ix = 0; ix < ixMax; ++ix)
                 if (pixels[ix])
                     // AABBGGRR
