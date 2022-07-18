@@ -19,44 +19,133 @@
 namespace aCCb {
 using std::vector, std::string, std::array, std::unordered_set, std::cout, std::endl;
 class plot2d : public Fl_Box {
-    double mouseDownDataX;
-    double mouseDownDataY;
-    int handle(int event) {
-        proj<double> p = projDataToScreen<double>();
-        int mouseX = Fl::event_x();
-        int mouseY = Fl::event_y();
-        double dataX = p.unprojX(mouseX);
-        double dataY = p.unprojY(mouseY);
-        switch (event) {
-            case FL_PUSH: {
-                mouseDownDataX = dataX;
-                mouseDownDataY = dataY;
-                return 1;
+    class evtMan_cl {
+       public:
+        evtMan_cl(plot2d* parent) : parent(parent){};
+        double mouseDown1DataX;
+        double mouseDown1DataY;
+        double mouseDown3DataX;
+        double mouseDown3DataY;
+        plot2d* parent;
+        double drawRectx0;
+        double drawRecty0;
+        double drawRectx1;
+        double drawRecty1;
+        class mouseState_cl {
+           public:
+            mouseState_cl() : state(0) {}
+            void update(int event) {
+                // === track mouse buttons ===
+                int stateUpdate = Fl::event_buttons();
+                stateDeltaOn = stateUpdate & ~state;
+                stateDeltaOff = state & ~stateUpdate;
+                state = stateUpdate;
+
+                switch (event) {
+                    case FL_PUSH:
+                    case FL_RELEASE:
+                    case FL_DRAG:
+                    case FL_MOUSEWHEEL:
+                    case FL_MOVE:
+                        int mx = Fl::event_x();
+                        int my = Fl::event_y();
+                        if ((mx != mouseX) || (my != mouseY)) {
+                            mouseX = mx;
+                            mouseY = my;
+                            mouseMoved = true;
+                        } else
+                            mouseMoved = false;
+                }  // switch
+
+                if (event == FL_MOUSEWHEEL)
+                    mouseWheel = Fl::event_dy();
+                else
+                    mouseWheel = 0;
             }
-            case FL_DRAG: {
-                double dx = dataX - mouseDownDataX;
-                double dy = dataY - mouseDownDataY;
-                x0 -= dx;
-                x1 -= dx;
-                y0 -= dy;
-                y1 -= dy;
-                dataX -= dx;
-                dataY -= dy;
-                mouseDownDataX = dataX;
-                mouseDownDataY = dataY;
-                redraw();
-                return 1;
+            bool getDeltaOn(int mask) {
+                return (stateDeltaOn & mask) != 0;
+            }
+            bool getDeltaOff(int mask) {
+                return (stateDeltaOff & mask) != 0;
+            }
+            bool getState(int mask) {
+                return (state & mask) != 0;
+            }
+            bool getMouseMove() {
+                return mouseMoved;
+            }
+            int getMouseWheel() {
+                return mouseWheel;
+            }
+            int getMouseX() {
+                return mouseX;
+            }
+            int getMouseY() {
+                return mouseY;
             }
 
-            case FL_RELEASE:
-                break;
-            case FL_MOUSEWHEEL: {
-                int d = Fl::event_dy();
-                if (d == 0)
-                    return 0;  // did not use event (other axis)
+           protected:
+            int state;
+            int stateDeltaOn;
+            int stateDeltaOff;
+            int mouseX;
+            int mouseY;
+            bool mouseMoved;
+            int mouseWheel;
+        } mouseState;
+        int handle(int event) {
+            proj<double> p = parent->projDataToScreen<double>();
+            mouseState.update(event);
+            int mouseX = mouseState.getMouseX();
+            int mouseY = mouseState.getMouseY();
+            double dataX = p.unprojX(mouseX);
+            double dataY = p.unprojY(mouseY);
+            if (mouseState.getDeltaOn(FL_BUTTON1)) {
+                mouseDown1DataX = dataX;
+                mouseDown1DataY = dataY;
+            }
+            if (mouseState.getDeltaOn(FL_BUTTON3)) {
+                mouseDown3DataX = dataX;
+                mouseDown3DataY = dataY;
+                drawRectx0 = dataX;
+                drawRecty0 = dataY;
+                drawRectx1 = dataX;
+                drawRecty1 = dataY;
+            }
+            if (mouseState.getDeltaOff(FL_BUTTON3))
+                if ((std::fabs(mouseDown3DataX - dataX) > 1e-18) || (std::fabs(mouseDown3DataY - dataY) > 1e-18))
+                    parent->setViewArea(/*x0*/ std::min(mouseDown3DataX, dataX), /*y0*/ std::min(mouseDown3DataY, dataY), /*x1*/ std::max(mouseDown3DataX, dataX), /*y1*/ std::max(mouseDown3DataY, dataY));
+
+            if (mouseState.getMouseMove()) {
+                if (mouseState.getState(FL_BUTTON1)) {
+                    double dx = dataX - mouseDown1DataX;
+                    double dy = dataY - mouseDown1DataY;
+                    double x0, y0, x1, y1;
+                    parent->getViewArea(x0, y0, x1, y1);
+                    x0 -= dx;
+                    x1 -= dx;
+                    y0 -= dy;
+                    y1 -= dy;
+                    dataX -= dx;
+                    dataY -= dy;
+                    mouseDown1DataX = dataX;
+                    mouseDown1DataY = dataY;
+                    parent->setViewArea(x0, y0, x1, y1);
+                }
+                if (mouseState.getState(FL_BUTTON3)) {
+                    drawRectx1 = dataX;
+                    drawRecty1 = dataY;
+                    parent->cursorRedraw();
+                }
+            }
+
+            int d = mouseState.getMouseWheel();
+            if (d != 0) {
                 double scale = 1.2;
                 if (d < 0)
                     scale = 1 / scale;
+                double x0, y0, x1, y1;
+                parent->getViewArea(x0, y0, x1, y1);
                 double deltaX0 = x0 - dataX;
                 double deltaX1 = x1 - dataX;
                 double deltaY0 = y0 - dataY;
@@ -69,16 +158,49 @@ class plot2d : public Fl_Box {
                 y0 = deltaY0 + dataY;
                 x1 = deltaX1 + dataX;
                 y1 = deltaY1 + dataY;
-                redraw();
-                return 1;
+                parent->setViewArea(x0, y0, x1, y1);
             }
-
-            break;
+            return 1;
         }
-        return 0;  // did not use event
-    }
+        bool drawRect(double& x0, double& y0, double& x1, double& y1) {
+            if (mouseState.getState(FL_BUTTON3)) {
+                x0 = drawRectx0;
+                y0 = drawRecty0;
+                x1 = drawRectx1;
+                y1 = drawRecty1;
+                return true;
+            } else
+                return false;
+        }
+    } evtMan;
 
    protected:
+    //* fltk event handler */
+    int handle(int event) {
+        return evtMan.handle(event);
+    }
+
+    /** gets the visible plot area */
+    void getViewArea(double& x0, double& y0, double& x1, double& y1) const {
+        x0 = this->x0;
+        y0 = this->y0;
+        x1 = this->x1;
+        y1 = this->y1;
+    }
+
+    //* sets the visible area, triggers redraw */
+    void setViewArea(double x0, double y0, double x1, double y1) {
+        this->x0 = x0;
+        this->y0 = y0;
+        this->x1 = x1;
+        this->y1 = y1;
+        needFullRedraw = true;
+        redraw();
+    }
+    void cursorRedraw() {
+        redraw();
+    }
+
     template <typename T>
     class proj;
 
@@ -95,7 +217,7 @@ class plot2d : public Fl_Box {
 
    public:
     plot2d(int x, int y, int w, int h, const char* l = 0)
-        : Fl_Box(x, y, w, h, l), data(NULL) {}
+        : Fl_Box(x, y, w, h, l), evtMan(this), data(NULL) {}
     ~plot2d() {}
 
     void drawAxes() {
@@ -120,7 +242,7 @@ class plot2d : public Fl_Box {
 
         // === draw x axis major tics and numbers ===
         vector<string> xAxisTicsMajorStr = axisTics::formatTicVals(xAxisTicsMajor);
-        for (int ix = 0; ix < xAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
+        for (size_t ix = 0; ix < xAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             double ticX = xAxisTicsMajor[ix];
 
             fl_color(FL_DARK_GREEN);
@@ -147,7 +269,7 @@ class plot2d : public Fl_Box {
 
         // === draw x axis major tics and numbers ===
         vector<string> yAxisTicsMajorStr = axisTics::formatTicVals(yAxisTicsMajor);
-        for (int ix = 0; ix < yAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
+        for (size_t ix = 0; ix < yAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             double ticY = yAxisTicsMajor[ix];
 
             fl_color(FL_DARK_GREEN);
@@ -164,26 +286,63 @@ class plot2d : public Fl_Box {
         fl_pop_clip();
     }
 
+    //* captures image for fast redraw where permitted e.g. when drawing zoom box */
+    class cachedImage_cl {
+       public:
+        cachedImage_cl() : data(NULL), lastW(0), lastH(0) {}
+        void capture(int x, int y, int w, int h) {
+            if ((w != lastW) || (h != lastH)) {
+                delete[] data;  // NULL is OK
+                data = NULL;
+            }
+            lastW = w;
+            lastH = h;
+            data = fl_read_image(data, x, y, w, h);
+        }
+        bool restore(int x, int y, int w, int h) {
+            if ((w != lastW) || (h != lastH))
+                return false;
+            Fl_RGB_Image im((const uchar*)&data[0], w, h, 3);
+            im.draw(x, y);
+            return true;
+        }
+        ~cachedImage_cl() {
+            delete[] data;
+        }
+        uchar* data;
+        int lastW;
+        int lastH;
+    } cachedImage;
+
     void draw() {
         this->Fl_Box::draw();
+
+        axisMarginLeft = fontsize;  // TBD move
+        axisMarginBottom = fontsize;
+        proj<float> p = projDataToScreen<float>();
+        const int screenX = p.getScreenX0();
+        const int screenY = p.getScreenY1();
+        const int width = p.getScreenWidth();
+        const int height = p.getScreenHeight();
+
+        // === try to reload the cached bitmap ===
+        if (!this->needFullRedraw)
+            if (cachedImage.restore(screenX, screenY, width, height))
+                goto skipDataDrawing;
+
+        // === background ===
         fl_rectf(x(), y(), w(), h(), FL_BLACK);
 
         fl_line_style(FL_SOLID);
         fl_color(FL_GREEN);
-
-        axisMarginLeft = fontsize;
-        axisMarginBottom = fontsize;
-        proj<float> p = projDataToScreen<float>();
 
         this->drawAxes();
 
         // === plot ===
         if (data != NULL) {
             size_t nData = data->size();
-            int width = p.getScreenWidth();
-            int height = p.getScreenHeight();
 
-            int n = width * height;
+            size_t n = width * height;
             if (pixels.size() != n)
                 pixels = vector<int>(n);
             else
@@ -229,13 +388,13 @@ class plot2d : public Fl_Box {
 
             // === convert to RGBA image ===
             size_t ixMax = pixels.size();
-            for (int ix = 0; ix < ixMax; ++ix)
+            for (size_t ix = 0; ix < ixMax; ++ix)
                 if (pixels[ix])
                     // AABBGGRR
                     rgba[ix] = 0xFF00FF00;
 
             // === render the RGBA image repeatedly, according to the stencil ===
-            fl_push_clip(p.getScreenX0(), p.getScreenY1(), width, height);
+            fl_push_clip(screenX, screenY, width, height);
             Fl_RGB_Image im((const uchar*)&rgba[0], width, height, 4);
             const char* tmp = marker;
             int delta = markerSize1d / 2;
@@ -245,6 +404,20 @@ class plot2d : public Fl_Box {
                     if (*(m++) != ' ')  // any non-space character in the stencil creates a shifted replica
                         im.draw(p.getScreenX0() + dx, p.getScreenY1() + dy);
             fl_pop_clip();
+            cachedImage.capture(screenX, screenY, width, height);
+        }
+        needFullRedraw = false;
+    skipDataDrawing:
+        // === draw zoom rectangle ===
+        fl_color(FL_WHITE);
+        proj<double> pd = projDataToScreen<double>();
+        double xr0, yr0, xr1, yr1;
+        if (evtMan.drawRect(xr0, yr0, xr1, yr1)) {
+            int xs0 = pd.projX(xr0);
+            int ys0 = pd.projY(yr0);
+            int xs1 = pd.projX(xr1);
+            int ys1 = pd.projY(yr1);
+            fl_rect(std::min(xs0, xs1), std::min(ys0, ys1), std::abs(xs1 - xs0), std::abs(ys1 - ys0));
         }
     }
 
@@ -260,7 +433,7 @@ class plot2d : public Fl_Box {
         float yMin = inf;
         float yMax = -inf;
         for (float v : data) {
-            if (~std::isinf(v) && ~std::isnan(v)) {
+            if (!std::isinf(v) && !std::isnan(v)) {
                 yMin = std::min(yMin, v);
                 yMax = std::max(yMax, v);
             }
@@ -336,6 +509,7 @@ class plot2d : public Fl_Box {
     double x1 = 2;
     double y0 = 1.23;
     double y1 = 1.24;
+    bool needFullRedraw = true;
     double autorange_y0 = 0;
     double autorange_y1 = 1;
     const std::vector<float>* data;

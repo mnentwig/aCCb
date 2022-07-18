@@ -1445,7 +1445,7 @@ std::vector<std::array<float, 4>> centerY(const std::vector<std::array<float, 4>
 }
 
 void rotate270(std::vector<std::array<float, 4>>& geom) {
-    for (int ix = 0; ix < geom.size(); ++ix) {
+    for (size_t ix = 0; ix < geom.size(); ++ix) {
         auto e = geom[ix];
         geom[ix][0] = -e[1];
         geom[ix][1] = e[0];
