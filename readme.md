@@ -223,9 +223,14 @@ if (auto [iter, succeeded] = mymap.insert(value); succeeded) {
 ## Notes: Templates
 * if constexpr (...)
 * e.g. std::is_unsigned_v<T> , std::is_integral_v<T>, , std::is_arithmetic_v<T> (has + - etc operators)
+* can use e.g. int template parameter two switch between different variants of some code (using constexpr if)
+* can use template specialization to add variant-dependent methods
 
 ## Notes: Float
 In a float calculation, use the 'f' postfix diligently on constants. Otherwise, conversion to double may cause a significant performance penalty.
 
 ## Command line parser
 See examples/cmdLineParser.cpp
+
+## Notes: Polymorphism
+Forget "virtual" => quality bug (upcasting to the base class then calling a method calls the method of the base class, not of the derived class)
