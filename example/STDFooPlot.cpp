@@ -26,7 +26,8 @@ class myMenu : public aCCbWidget {
         this->i2 = create("my text", X0);
         cur.move(DYL);  // space for label on top
         this->fi = create("my float", X0);
-        Fl_Button *b = create("Click me!", DY);
+        // Fl_Button *b =
+        (Fl_Button *)create("Click me!", DY);
     }
     void callbackButton(Fl_Button *) {
     }
@@ -58,6 +59,7 @@ class myTestWin {
         window->resizable(this->tb);
         window->end();
         this->data = aCCb::binaryIo::file2vec<float>("out2.float");
+#if 0
         const char *marker =
             "X   X"
             " X X "
@@ -65,6 +67,7 @@ class myTestWin {
             " X X "
             "X   X";
         const char *marker2 = "X";
+#endif
         const char *marker3 =
             "X X"
             " X "
@@ -239,7 +242,6 @@ int main(int argc, const char **argv) {
             throw runtime_error("unexpected argument '" + a + "'");
     }
     l.close();
-    exit(0);
     Fl::visual(FL_RGB);
     myTestWin w;
     w.show();

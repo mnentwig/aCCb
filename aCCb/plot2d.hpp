@@ -314,6 +314,81 @@ class plot2d : public Fl_Box {
         int lastH;
     } cachedImage;
 
+    class drawJob {
+       public:
+        void draw(proj<float>& p, /*displayed area in world coordinates*/ double x0, double y0, double x1, double y1) {
+            const int width = p.getScreenWidth();
+            const int height = p.getScreenHeight();
+
+            size_t nData = data->size();
+
+            size_t n = width * height;
+            vector<int> pixels(n);  // note, int is here slightly faster than char
+            vector<uint32_t> rgba(n);
+
+            // === render into a bitmap starting (0, 0) ===
+            const proj<float> pPixmap(x0, y0, x1, y1, /*screenX0*/ 0, /*screenY0*/ height, /*screenX1*/ width, /*screenY1*/ 0);
+
+            // === mark pixels that show a data point ===
+            //  O{nData} but can be parallelized. For a 10M dataset, 1000 repetitions: 29 secs 1 thread) > 6 s (8 threads)
+            int nTasks = 1;
+            if (nData < 10000)
+                nTasks = 1;
+            else if (nData < 100000)
+                nTasks = 4;
+            else
+                nTasks = 8;
+
+            vector<std::future<void>> jobs;
+            size_t chunk = std::ceil((float)nData / nTasks);
+            const vector<float>* pData = data;
+            for (int ixTask = 0; ixTask < nTasks; ++ixTask) {
+                size_t taskIxStart = ixTask * chunk;
+                size_t taskIxEnd = std::min(taskIxStart + chunk, nData);
+
+                auto job = [&pixels, pData, width, height, pPixmap, taskIxStart, taskIxEnd]() {
+                    for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
+                        float plotX = (float)(ix + 1);
+                        float plotY = (*pData)[ix];
+                        int pixX = pPixmap.projX(plotX);
+                        int pixY = pPixmap.projY(plotY);
+                        if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
+                            pixels[pixY * width + pixX] = 1;
+                    }
+                };
+                jobs.push_back(std::async(job));
+            }  // for ixTask
+            for (auto it = jobs.begin(); it != jobs.end(); ++it)
+                (*it).get();
+
+            // === convert to RGBA image ===
+            size_t ixMax = pixels.size();
+            for (size_t ix = 0; ix < ixMax; ++ix)
+                if (pixels[ix])
+                    // AABBGGRR
+                    rgba[ix] = markerRgbVal;
+
+            // === render the RGBA image repeatedly, according to the stencil ===
+            Fl_RGB_Image im((const uchar*)&rgba[0], width, height, 4);
+            int charCount = string(marker).size();
+            int markerSize1d = std::sqrt(charCount);
+            assert(markerSize1d * markerSize1d == charCount && "marker must be square");
+
+            int delta = markerSize1d / 2;
+            assert(2 * delta + 1 == markerSize1d && "marker size must be odd");
+            const int screenX = p.getScreenX0();
+            const int screenY = p.getScreenY1();
+            const char* m = this->marker;
+            for (int dy = -delta; dy <= delta; ++dy)
+                for (int dx = -delta; dx <= delta; ++dx)
+                    if (*(m++) != ' ')  // any non-space character in the stencil creates a shifted replica
+                        im.draw(screenX + dx, screenY + dy);
+        }
+        const vector<float>* data;
+        const char* marker;
+        uint32_t markerRgbVal = 0xFF00FF00;
+    };
+
     void draw() {
         this->Fl_Box::draw();
 
@@ -339,73 +414,14 @@ class plot2d : public Fl_Box {
         this->drawAxes();
 
         // === plot ===
-        if (data != NULL) {
-            size_t nData = data->size();
+        fl_push_clip(screenX, screenY, width, height);
+        for (auto job : drawJobs)
+            job.draw(p, x0, y0, x1, y1);
+        fl_pop_clip();
 
-            size_t n = width * height;
-            if (pixels.size() != n)
-                pixels = vector<int>(n);
-            else
-                std::fill(pixels.begin(), pixels.end(), 0);
-            if (rgba.size() != n)
-                rgba = vector<uint32_t>(n);
-            else
-                std::fill(rgba.begin(), rgba.end(), 0);
+        // === save image for cursor operations ===
+        cachedImage.capture(screenX, screenY, width, height);
 
-            // === render into a bitmap starting (0, 0) ===
-            const proj<float> pPixmap(x0, y0, x1, y1, /*screenX0*/ 0, /*screenY0*/ height, /*screenX1*/ width, /*screenY1*/ 0);
-
-            // === mark pixels that show a data point ===
-            //  O{nData} but can be parallelized. For a 10M dataset, 1000 repetitions: 29 secs 1 thread) > 6 s (8 threads)
-            int nTasks = 1;
-            if (nData < 10000)
-                nTasks = 1;
-            else if (nData < 100000)
-                nTasks = 4;
-            else
-                nTasks = 8;
-
-            vector<std::future<void>> jobs;
-            size_t chunk = std::ceil((float)nData / nTasks);
-            for (int ixTask = 0; ixTask < nTasks; ++ixTask) {
-                size_t taskIxStart = ixTask * chunk;
-                size_t taskIxEnd = std::min(taskIxStart + chunk, nData);
-
-                auto job = [this, width, height, pPixmap, taskIxStart, taskIxEnd]() {
-                    for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
-                        float plotX = (float)(ix + 1);
-                        float plotY = (*data)[ix];
-                        int pixX = pPixmap.projX(plotX);
-                        int pixY = pPixmap.projY(plotY);
-                        if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                            pixels[pixY * width + pixX] = 1;
-                    }
-                };
-                jobs.push_back(std::async(job));
-            }  // for ixTask
-            for (auto it = jobs.begin(); it != jobs.end(); ++it)
-                (*it).get();
-
-            // === convert to RGBA image ===
-            size_t ixMax = pixels.size();
-            for (size_t ix = 0; ix < ixMax; ++ix)
-                if (pixels[ix])
-                    // AABBGGRR
-                    rgba[ix] = 0xFF00FF00;
-
-            // === render the RGBA image repeatedly, according to the stencil ===
-            fl_push_clip(screenX, screenY, width, height);
-            Fl_RGB_Image im((const uchar*)&rgba[0], width, height, 4);
-            const char* tmp = marker;
-            int delta = markerSize1d / 2;
-            const char* m = this->marker;
-            for (int dy = -delta; dy <= delta; ++dy)
-                for (int dx = -delta; dx <= delta; ++dx)
-                    if (*(m++) != ' ')  // any non-space character in the stencil creates a shifted replica
-                        im.draw(p.getScreenX0() + dx, p.getScreenY1() + dy);
-            fl_pop_clip();
-            cachedImage.capture(screenX, screenY, width, height);
-        }
         needFullRedraw = false;
     skipDataDrawing:
         // === draw zoom rectangle ===
@@ -421,12 +437,10 @@ class plot2d : public Fl_Box {
         }
     }
 
-    void setData(const std::vector<float>& data, const char* marker) {
+    void
+    setData(const std::vector<float>& data, const char* marker) {
         this->data = &data;
         this->marker = marker;
-        int charCount = string(marker).size();
-        this->markerSize1d = std::sqrt(charCount);
-        assert(this->markerSize1d * this->markerSize1d == charCount);  // marker must be square
         x0 = 1;
         x1 = data.size();
         const float inf = std::numeric_limits<float>::infinity();
@@ -442,9 +456,13 @@ class plot2d : public Fl_Box {
         y1 = yMax;
         autorange_y0 = yMin;
         autorange_y1 = yMax;
+        drawJobs.push_back(drawJob());
+        drawJobs.back().data = &data;
+        drawJobs.back().marker = marker;
     }
 
    protected:
+    vector<drawJob> drawJobs;
     //* transformation from data to screen */
     template <typename T>
     class proj {
@@ -494,11 +512,7 @@ class plot2d : public Fl_Box {
         }
     };
 
-    vector<int> pixels;  // note, int is here slightly faster than char
-    vector<uint32_t> rgba;
-
     const char* marker = "X";
-    int markerSize1d = 1;
     float fontsize = 14;
     int axisMarginLeft;
     int axisMarginBottom;
