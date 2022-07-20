@@ -13,6 +13,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "plot2d/axisTics.hpp"
+#include "plot2d/drawJob.hpp"
+#include "plot2d/proj.hpp"
+#include "plot2d/marker.hpp"
 #include "vectorText.hpp"
 #include "widget.hpp"
 
@@ -202,9 +206,6 @@ class plot2d : public Fl_Box {
     }
 
     template <typename T>
-    class proj;
-
-    template <typename T>
     proj<T> projDataToScreen() {
         // bottom left
         int screenX0 = x() + axisMarginLeft;
@@ -314,135 +315,12 @@ class plot2d : public Fl_Box {
         int lastH;
     } cachedImage;
 
-    class drawJob {
-       public:
-        drawJob(const vector<float>* dataX, const vector<float>* dataY, const char* marker) : dataX(dataX), dataY(dataY), marker(marker) {}
-        void draw(const proj<float>& p, /*displayed area in world coordinates*/ double x0, double y0, double x1, double y1) {
-            const int width = p.getScreenWidth();
-            const int height = p.getScreenHeight();
-
-            size_t nData = dataY->size();
-
-            size_t n = width * height;
-            vector<int> pixels(n);  // note, int is here slightly faster than char
-            vector<uint32_t> rgba(n);
-
-            // === render into a bitmap starting (0, 0) ===
-            const proj<float> pPixmap(x0, y0, x1, y1, /*screenX0*/ 0, /*screenY0*/ height, /*screenX1*/ width, /*screenY1*/ 0);
-
-            // === mark pixels that show a data point ===
-            //  O{nData} but can be parallelized. For a 10M dataset, 1000 repetitions: 29 secs 1 thread) > 6 s (8 threads)
-            int nTasks = 1;
-            if (nData < 10000)
-                nTasks = 1;
-            else if (nData < 100000)
-                nTasks = 4;
-            else
-                nTasks = 8;
-
-            vector<std::future<void>> jobs;
-            size_t chunk = std::ceil((float)nData / nTasks);
-            for (int ixTask = 0; ixTask < nTasks; ++ixTask) {
-                size_t taskIxStart = ixTask * chunk;
-                size_t taskIxEnd = std::min(taskIxStart + chunk, nData);
-
-                if (dataX) {
-                    assert(dataX->size() == dataY->size());
-
-                    auto job = [this, &pixels, width, height, pPixmap, taskIxStart, taskIxEnd]() {
-                        for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
-                            float plotX = (*(this->dataX))[ix];
-                            float plotY = (*(this->dataY))[ix];
-                            int pixX = pPixmap.projX(plotX);
-                            int pixY = pPixmap.projY(plotY);
-                            if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                                pixels[pixY * width + pixX] = 1;
-                        }
-                    };
-                    jobs.push_back(std::async(job));
-                } else {
-                    auto job = [this, &pixels, width, height, pPixmap, taskIxStart, taskIxEnd]() {
-                        for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
-                            float plotX = (float)(ix + 1);
-                            float plotY = (*(this->dataY))[ix];
-                            int pixX = pPixmap.projX(plotX);
-                            int pixY = pPixmap.projY(plotY);
-                            if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                                pixels[pixY * width + pixX] = 1;
-                        }
-                    };
-                    jobs.push_back(std::async(job));
-                }
-            }  // for ixTask
-            for (auto it = jobs.begin(); it != jobs.end(); ++it)
-                (*it).get();
-
-            // === convert to RGBA image ===
-            size_t ixMax = pixels.size();
-            for (size_t ix = 0; ix < ixMax; ++ix)
-                if (pixels[ix])
-                    // AABBGGRR
-                    rgba[ix] = markerRgbVal;
-
-            // === render the RGBA image repeatedly, according to the stencil ===
-            Fl_RGB_Image im((const uchar*)&rgba[0], width, height, 4);
-            int charCount = string(marker).size();
-            int markerSize1d = std::sqrt(charCount);
-            assert(markerSize1d * markerSize1d == charCount && "marker must be square");
-
-            int delta = markerSize1d / 2;
-            assert(2 * delta + 1 == markerSize1d && "marker size must be odd");
-            const int screenX = p.getScreenX0();
-            const int screenY = p.getScreenY1();
-            const char* m = this->marker;
-            for (int dy = -delta; dy <= delta; ++dy)
-                for (int dx = -delta; dx <= delta; ++dx)
-                    if (*(m++) != ' ')  // any non-space character in the stencil creates a shifted replica
-                        im.draw(screenX + dx, screenY + dy);
-        }
-        /** given limits are extended to include data */
-        void updateAutoscale(double& x0, double& x1, double& y0, double& y1) {
-            const float inf = std::numeric_limits<float>::infinity();
-            float x0f = inf;
-            float x1f = -inf;
-            float y0f = inf;
-            float y1f = -inf;
-            for (float y : *dataY) {
-                if (!std::isinf(y) && !std::isnan(y)) {
-                    y0f = std::min(y0f, y);
-                    y1f = std::max(y1f, y);
-                }
-            }
-            if (dataX == NULL) {
-                x0f = std::min(x0f, 1.0f);
-                x1f = std::max(x1f, (float)(dataY->size() + 1));
-            } else {
-                for (float x : *dataX) {
-                    if (!std::isinf(x) && !std::isnan(x)) {
-                        x0f = std::min(x0f, x);
-                        x1f = std::max(x1f, x);
-                    }
-                }
-            }
-            x0 = (double)x0f;
-            y0 = (double)y0f;
-            x1 = (double)x1f;
-            y1 = (double)y1f;
-        }
-
-       protected:
-        const vector<float>* dataX;
-        const vector<float>* dataY;
-        const char* marker;
-        uint32_t markerRgbVal = 0xFF00FF00;
-    };  // class drawJob
-
     void draw() {
         this->Fl_Box::draw();
 
         axisMarginLeft = fontsize;  // TBD move
         axisMarginBottom = fontsize;
-        proj<float> p = projDataToScreen<float>();
+        proj<double> p = projDataToScreen<double>();
         const int screenX = p.getScreenX0();
         const int screenY = p.getScreenY1();
         const int width = p.getScreenWidth();
@@ -463,11 +341,11 @@ class plot2d : public Fl_Box {
 
         // === plot ===
         fl_push_clip(screenX, screenY, width, height);
-        for (auto job : drawJobs)
-            job.draw(p, x0, y0, x1, y1);
+        allDrawJobs.draw(p);
         fl_pop_clip();
 
-        // === save image for cursor operations ===
+        // === save whole drawing area image for cursor operations ===
+        // todo include axes
         cachedImage.capture(screenX, screenY, width, height);
 
         needFullRedraw = false;
@@ -485,8 +363,8 @@ class plot2d : public Fl_Box {
         }
     }
 
-    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const char* marker) {
-        drawJobs.push_back(drawJob(dataX, dataY, marker));
+    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const marker_cl* marker) {    
+        allDrawJobs.addTrace(drawJob(dataX, dataY, marker));
     }
 
     void autoscale() {
@@ -495,8 +373,7 @@ class plot2d : public Fl_Box {
         x1 = -inf;
         y0 = inf;
         y1 = -inf;
-        for (auto j : drawJobs)
-            j.updateAutoscale(x0, x1, y0, y1);
+        allDrawJobs.updateAutoscale(x0, y0, x1, y1);
         if (std::isinf(x0)) x0 = -1;
         if (std::isinf(x1)) x1 = 1;
         if (std::isinf(y0)) y0 = -1;
@@ -504,55 +381,7 @@ class plot2d : public Fl_Box {
     }
 
    protected:
-    vector<drawJob> drawJobs;
-    //* transformation from data to screen */
-    template <typename T>
-    class proj {
-        T dataX0, dataY0, dataX1, dataY1;
-        int screenX0, screenY0, screenX1, screenY1;
-        T mXData2screen;
-        T bXData2screen;
-        T mYData2screen;
-        T bYData2screen;
-        // transformation:
-        // screen = (data-data1)/(data2-data1)*(screen2-screen1)+screen1;
-        // screen = data * (screen2-screen1)/(data2-data1) + screen1 - data1 * (screen2-screen1)/(data2-data1)
-       public:
-        proj(T dataX0, T dataY0, T dataX1, T dataY1, int screenX0, int screenY0, int screenX1, int screenY1) : dataX0(dataX0), dataY0(dataY0), dataX1(dataX1), dataY1(dataY1), screenX0(screenX0), screenY0(screenY0), screenX1(screenX1), screenY1(screenY1), mXData2screen((screenX1 - screenX0) / (dataX1 - dataX0)), bXData2screen(screenX0 - dataX0 * (screenX1 - screenX0) / (dataX1 - dataX0)), mYData2screen((screenY1 - screenY0) / (dataY1 - dataY0)), bYData2screen(screenY0 - dataY0 * (screenY1 - screenY0) / (dataY1 - dataY0)) {}
-        //** projects data to screen */
-        inline int projX(T x) const {
-            return x * mXData2screen + bXData2screen + 0.5f;
-        }
-        //** projects data to screen */
-        inline int projY(T y) const {
-            return y * mYData2screen + bYData2screen + 0.5f;
-        }
-
-        //* projects screen to data */
-        inline T unprojX(int xMouse) const {
-            xMouse = std::min(xMouse, std::max(screenX0, screenX1));
-            xMouse = std::max(xMouse, std::min(screenX0, screenX1));
-            return (xMouse - bXData2screen) / mXData2screen;
-        }
-        //* projects screen to data */
-        inline T unprojY(int yMouse) const {
-            yMouse = std::min(yMouse, std::max(screenY0, screenY1));
-            yMouse = std::max(yMouse, std::min(screenY0, screenY1));
-            return (yMouse - bYData2screen) / mYData2screen;
-        }
-        inline int getScreenWidth() const {
-            return std::abs(screenX1 - screenX0);
-        }
-        inline int getScreenHeight() const {
-            return std::abs(screenY1 - screenY0);
-        }
-        inline int getScreenX0() const {
-            return screenX0;
-        }
-        inline int getScreenY1() const {
-            return screenY1;
-        }
-    };
+    allDrawJobs_cl allDrawJobs;
 
     float fontsize = 14;
     int axisMarginLeft;
@@ -560,92 +389,11 @@ class plot2d : public Fl_Box {
     const int minorTicLength = 3;
     const int majorTicLength = 7;
 
+    /** visible area */
     double x0 = -1;
     double x1 = 2;
     double y0 = 1.23;
     double y1 = 1.24;
     bool needFullRedraw = true;
-    double autorange_y0 = 0;
-    double autorange_y1 = 1;
-
-    //* decides where to place the axis tics, formats the text labels */
-    class axisTics {
-       public:
-        //* Determines axis grid. Returns vector with minorTic, majorTic spacings
-        static vector<double> getTicDelta(double startVal, double endVal) {
-            double range = std::abs(endVal - startVal);
-            double x = 1;
-            while (x < range)
-                x *= 10;
-            vector<double> r;
-            double nTarget = 4;  // minimum number
-            while (r.size() < 2) {
-                if (nTarget * x < range)
-                    r.push_back(x);
-                if (nTarget * x * 0.5 < range)
-                    r.push_back(x * 0.5);
-                else if (nTarget * x * 0.2 < range)
-                    r.push_back(x * 0.2);
-                x /= 10;
-                assert(x != 0);
-            }
-            return r;
-        }
-
-        //* given a spacing, calculate the absolute tic values */
-        static vector<double> getTicVals(double startVal, double endVal, double ticDelta) {
-            assert(ticDelta != 0);
-            if (startVal < endVal)
-                ticDelta = std::abs(ticDelta);
-            else
-                ticDelta = -std::abs(ticDelta);
-            double gridVal = startVal;
-            gridVal /= ticDelta;
-            gridVal = std::floor(gridVal);
-            gridVal *= ticDelta;
-            gridVal -= 2 * ticDelta;  // take one step back as floor may round in the wrong direction, depending on sign
-            vector<double> r;
-            while (gridVal <= endVal + ticDelta / 2.0) {
-                // note: don't make the interval wider, otherwise an axis looks like a tic when it's not.
-                if (isInRange(startVal - 0.001 * ticDelta, endVal + 0.001 * ticDelta, gridVal))
-                    r.push_back(gridVal);
-                gridVal += ticDelta;
-            }
-            return r;
-        }
-
-        static vector<string> formatTicVals(const vector<double> ticVals) {
-            vector<string> ticValsStr;
-            for (int precision = -1; precision < 12; ++precision) {
-                ticValsStr = formatTicVals(ticVals, precision);
-                unordered_set checkDuplicates(ticValsStr.begin(), ticValsStr.end());
-                if (checkDuplicates.size() == ticValsStr.size())
-                    break;  // labels are unique
-            }
-            return ticValsStr;
-        }
-
-       protected:
-        static vector<string> formatTicVals(const vector<double> vals, int precision) {
-            std::stringstream ss;
-            if (precision < 0) {
-                ss << std::fixed;
-                ss.precision(0);
-            } else
-                ss.precision(precision);
-            vector<string> r;
-            for (double v : vals) {
-                ss.str(std::string());  // clear
-                ss << v;
-                r.push_back(ss.str());
-            }
-            return r;
-        }
-
-        //* test whether val lies within lim1..lim2 range, regardless of order (endpoints inclusive) */
-        static inline bool isInRange(double lim1, double lim2, double val) {
-            return ((val >= lim1) && (val <= lim2)) || ((val >= lim2) && (val <= lim1));
-        }
-    };
 };
 }  // namespace aCCb

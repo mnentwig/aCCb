@@ -234,3 +234,6 @@ See examples/cmdLineParser.cpp
 
 ## Notes: Polymorphism
 Forget "virtual" => quality bug (upcasting to the base class then calling a method calls the method of the base class, not of the derived class)
+
+## Notes: Address of element in STL container
+The element can move in memory e.g. realloc to create more space. Check, under which conditions an iterator is invalidated.

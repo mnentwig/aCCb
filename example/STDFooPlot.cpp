@@ -7,12 +7,13 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
-#include <map>
-using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::map;
+using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::map, std::pair;
 
 class myMenu : public aCCbWidget {
    public:
@@ -51,6 +52,7 @@ class myMenu : public aCCbWidget {
 class myTestWin {
    public:
     myTestWin() {
+        setupMarkers();
         this->window = new Fl_Double_Window(1280, 800);
         this->window->color(FL_BLACK);
         this->tb = new aCCb::plot2d(0, 0, 800, 800);
@@ -59,22 +61,14 @@ class myTestWin {
         menu->color(FL_GREEN);
         window->resizable(this->tb);
         window->end();
+
         const string fn = "out2.float";
         dataByFilename[fn] = aCCb::binaryIo::file2vec<float>(fn);
-#if 0
-        const char *marker =
-            "X   X"
-            " X X "
-            "  X  "
-            " X X "
-            "X   X";
-        const char *marker2 = "X";
-#endif
-        const char *marker3 =
-            "X X"
-            " X "
-            "X X";
-        tb->addTrace(NULL, &(dataByFilename[fn]), marker3);
+
+//        marker_cl *m = markers["g.1"];
+        marker_cl *m = markers["w.3"];
+        assert(m);
+        tb->addTrace(NULL, &(dataByFilename[fn]), m);
         tb->autoscale();
     }
     void show() {
@@ -85,6 +79,69 @@ class myTestWin {
     }
 
    protected:
+    map<string, marker_cl *> markers;
+    void setupMarkers() {
+        // =======================================
+        // set up markers
+        // =======================================
+        vector<pair<char, uint32_t>> colors{
+            {'k', 0xFF222222},
+            {'r', 0xFF0000FF},
+            {'g', 0xFF00FF00},
+            {'b', 0xFFFF0000},
+            {'c', 0xFFFFFF00},
+            {'m', 0xFF00FFFF},
+            {'y', 0xFFFF00FF},
+            {'a', 0xFF888888},
+            {'w', 0xFFFFFFFF}};
+
+        const string dot = ".";
+        const string plus = "+";
+        const string cross = "x";
+        int id = 0;
+        for (auto x : colors) {
+            char colCode = x.first;
+            uint32_t rgba = x.second;
+            string sequence;
+            string key;
+
+            sequence = "X";
+            key = colCode + dot + "1";
+            markers[key] = new marker_cl(sequence, rgba, id);
+            markers[colCode + dot] = markers[key];
+
+            sequence =
+                "XXX"
+                "XXX"
+                "XXX";
+            key = colCode + dot + "2";
+            markers[key] = new marker_cl(sequence, rgba, id);
+
+            sequence =
+                " XXX "
+                "XXXXX"
+                "XXXXX"
+                "XXXXX"
+                " XXX ";
+            key = colCode + dot + "3";
+            markers[key] = new marker_cl(sequence, rgba, id);
+
+            sequence =
+                " X "
+                "XXX"
+                " X ";
+            key = colCode + plus + "1";
+            markers[key] = new marker_cl(sequence, rgba, id);
+            markers[colCode + plus] = markers[key];
+
+            sequence =
+                "X X"
+                " X "
+                "X X";
+            key = colCode + cross + "1";
+            markers[key] = new marker_cl(sequence, rgba, id);
+        }  // for colors
+    }
     aCCbWidget *menu;
     Fl_Double_Window *window;
     aCCb::plot2d *tb;
@@ -247,6 +304,7 @@ int main(int argc, const char **argv) {
     l.close();
     Fl::visual(FL_RGB);
     myTestWin w;
+
     w.show();
     return Fl::run();
 }
