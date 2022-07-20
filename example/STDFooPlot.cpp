@@ -11,7 +11,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::unordered_map;
+#include <map>
+using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::map;
 
 class myMenu : public aCCbWidget {
    public:
@@ -58,7 +59,8 @@ class myTestWin {
         menu->color(FL_GREEN);
         window->resizable(this->tb);
         window->end();
-        this->data = aCCb::binaryIo::file2vec<float>("out2.float");
+        const string fn = "out2.float";
+        dataByFilename[fn] = aCCb::binaryIo::file2vec<float>(fn);
 #if 0
         const char *marker =
             "X   X"
@@ -72,7 +74,8 @@ class myTestWin {
             "X X"
             " X "
             "X X";
-        tb->setData(this->data, marker3);
+        tb->addTrace(NULL, &(dataByFilename[fn]), marker3);
+        tb->autoscale();
     }
     void show() {
         this->window->show();
@@ -85,7 +88,7 @@ class myTestWin {
     aCCbWidget *menu;
     Fl_Double_Window *window;
     aCCb::plot2d *tb;
-    vector<float> data;
+    map<string, vector<float>> dataByFilename;
 };
 
 // ==============================================================================

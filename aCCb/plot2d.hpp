@@ -217,7 +217,7 @@ class plot2d : public Fl_Box {
 
    public:
     plot2d(int x, int y, int w, int h, const char* l = 0)
-        : Fl_Box(x, y, w, h, l), evtMan(this), data(NULL) {}
+        : Fl_Box(x, y, w, h, l), evtMan(this) {}
     ~plot2d() {}
 
     void drawAxes() {
@@ -316,11 +316,12 @@ class plot2d : public Fl_Box {
 
     class drawJob {
        public:
-        void draw(proj<float>& p, /*displayed area in world coordinates*/ double x0, double y0, double x1, double y1) {
+        drawJob(const vector<float>* dataX, const vector<float>* dataY, const char* marker) : dataX(dataX), dataY(dataY), marker(marker) {}
+        void draw(const proj<float>& p, /*displayed area in world coordinates*/ double x0, double y0, double x1, double y1) {
             const int width = p.getScreenWidth();
             const int height = p.getScreenHeight();
 
-            size_t nData = data->size();
+            size_t nData = dataY->size();
 
             size_t n = width * height;
             vector<int> pixels(n);  // note, int is here slightly faster than char
@@ -341,22 +342,37 @@ class plot2d : public Fl_Box {
 
             vector<std::future<void>> jobs;
             size_t chunk = std::ceil((float)nData / nTasks);
-            const vector<float>* pData = data;
             for (int ixTask = 0; ixTask < nTasks; ++ixTask) {
                 size_t taskIxStart = ixTask * chunk;
                 size_t taskIxEnd = std::min(taskIxStart + chunk, nData);
 
-                auto job = [&pixels, pData, width, height, pPixmap, taskIxStart, taskIxEnd]() {
-                    for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
-                        float plotX = (float)(ix + 1);
-                        float plotY = (*pData)[ix];
-                        int pixX = pPixmap.projX(plotX);
-                        int pixY = pPixmap.projY(plotY);
-                        if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                            pixels[pixY * width + pixX] = 1;
-                    }
-                };
-                jobs.push_back(std::async(job));
+                if (dataX) {
+                    assert(dataX->size() == dataY->size());
+
+                    auto job = [this, &pixels, width, height, pPixmap, taskIxStart, taskIxEnd]() {
+                        for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
+                            float plotX = (*(this->dataX))[ix];
+                            float plotY = (*(this->dataY))[ix];
+                            int pixX = pPixmap.projX(plotX);
+                            int pixY = pPixmap.projY(plotY);
+                            if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
+                                pixels[pixY * width + pixX] = 1;
+                        }
+                    };
+                    jobs.push_back(std::async(job));
+                } else {
+                    auto job = [this, &pixels, width, height, pPixmap, taskIxStart, taskIxEnd]() {
+                        for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
+                            float plotX = (float)(ix + 1);
+                            float plotY = (*(this->dataY))[ix];
+                            int pixX = pPixmap.projX(plotX);
+                            int pixY = pPixmap.projY(plotY);
+                            if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
+                                pixels[pixY * width + pixX] = 1;
+                        }
+                    };
+                    jobs.push_back(std::async(job));
+                }
             }  // for ixTask
             for (auto it = jobs.begin(); it != jobs.end(); ++it)
                 (*it).get();
@@ -384,10 +400,42 @@ class plot2d : public Fl_Box {
                     if (*(m++) != ' ')  // any non-space character in the stencil creates a shifted replica
                         im.draw(screenX + dx, screenY + dy);
         }
-        const vector<float>* data;
+        /** given limits are extended to include data */
+        void updateAutoscale(double& x0, double& x1, double& y0, double& y1) {
+            const float inf = std::numeric_limits<float>::infinity();
+            float x0f = inf;
+            float x1f = -inf;
+            float y0f = inf;
+            float y1f = -inf;
+            for (float y : *dataY) {
+                if (!std::isinf(y) && !std::isnan(y)) {
+                    y0f = std::min(y0f, y);
+                    y1f = std::max(y1f, y);
+                }
+            }
+            if (dataX == NULL) {
+                x0f = std::min(x0f, 1.0f);
+                x1f = std::max(x1f, (float)(dataY->size() + 1));
+            } else {
+                for (float x : *dataX) {
+                    if (!std::isinf(x) && !std::isnan(x)) {
+                        x0f = std::min(x0f, x);
+                        x1f = std::max(x1f, x);
+                    }
+                }
+            }
+            x0 = (double)x0f;
+            y0 = (double)y0f;
+            x1 = (double)x1f;
+            y1 = (double)y1f;
+        }
+
+       protected:
+        const vector<float>* dataX;
+        const vector<float>* dataY;
         const char* marker;
         uint32_t markerRgbVal = 0xFF00FF00;
-    };
+    };  // class drawJob
 
     void draw() {
         this->Fl_Box::draw();
@@ -437,28 +485,22 @@ class plot2d : public Fl_Box {
         }
     }
 
-    void
-    setData(const std::vector<float>& data, const char* marker) {
-        this->data = &data;
-        this->marker = marker;
-        x0 = 1;
-        x1 = data.size();
-        const float inf = std::numeric_limits<float>::infinity();
-        float yMin = inf;
-        float yMax = -inf;
-        for (float v : data) {
-            if (!std::isinf(v) && !std::isnan(v)) {
-                yMin = std::min(yMin, v);
-                yMax = std::max(yMax, v);
-            }
-        }
-        y0 = yMin;
-        y1 = yMax;
-        autorange_y0 = yMin;
-        autorange_y1 = yMax;
-        drawJobs.push_back(drawJob());
-        drawJobs.back().data = &data;
-        drawJobs.back().marker = marker;
+    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const char* marker) {
+        drawJobs.push_back(drawJob(dataX, dataY, marker));
+    }
+
+    void autoscale() {
+        const double inf = std::numeric_limits<float>::infinity();
+        x0 = inf;
+        x1 = -inf;
+        y0 = inf;
+        y1 = -inf;
+        for (auto j : drawJobs)
+            j.updateAutoscale(x0, x1, y0, y1);
+        if (std::isinf(x0)) x0 = -1;
+        if (std::isinf(x1)) x1 = 1;
+        if (std::isinf(y0)) y0 = -1;
+        if (std::isinf(y1)) y1 = 1;
     }
 
    protected:
@@ -498,21 +540,20 @@ class plot2d : public Fl_Box {
             yMouse = std::max(yMouse, std::min(screenY0, screenY1));
             return (yMouse - bYData2screen) / mYData2screen;
         }
-        inline int getScreenWidth() {
+        inline int getScreenWidth() const {
             return std::abs(screenX1 - screenX0);
         }
-        inline int getScreenHeight() {
+        inline int getScreenHeight() const {
             return std::abs(screenY1 - screenY0);
         }
-        inline int getScreenX0() {
+        inline int getScreenX0() const {
             return screenX0;
         }
-        inline int getScreenY1() {
+        inline int getScreenY1() const {
             return screenY1;
         }
     };
 
-    const char* marker = "X";
     float fontsize = 14;
     int axisMarginLeft;
     int axisMarginBottom;
@@ -526,7 +567,6 @@ class plot2d : public Fl_Box {
     bool needFullRedraw = true;
     double autorange_y0 = 0;
     double autorange_y1 = 1;
-    const std::vector<float>* data;
 
     //* decides where to place the axis tics, formats the text labels */
     class axisTics {
