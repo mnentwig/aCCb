@@ -179,7 +179,6 @@ class plot2d : public Fl_Box {
         }
     } evtMan;
 
-   protected:
     //* fltk event handler */
     int handle(int event) {
         return evtMan.handle(event);
@@ -208,13 +207,38 @@ class plot2d : public Fl_Box {
 
     template <typename T>
     proj<T> projDataToScreen() {
+        int axisMarginTop = (title != "" ? titleFontsize : 0);
+        int axisMarginLeft = fontsize + (ylabel != "" ? axisLabelFontsize : 0);
+        int axisMarginBottom = fontsize + (xlabel != "" ? axisLabelFontsize : 0);
         // bottom left
         int screenX0 = x() + axisMarginLeft;
         int screenY0 = y() + h() - axisMarginBottom;
         // top right
         int screenX1 = x() + w();
-        int screenY1 = y();
+        int screenY1 = y() + axisMarginTop;
         return proj<T>(x0, y0, x1, y1, screenX0, screenY0, screenX1, screenY1);
+    }
+
+    void drawTitle(const proj<double>& p) const {
+        vector<array<float, 4>> geom = aCCb::vectorFont::renderText(title);
+        geom = aCCb::vectorFont::centerX(geom);
+        int w = aCCb::vectorFont::getWidth(geom);
+        aCCbWidget::renderText(geom, titleFontsize, p.getScreenXCenter() - w, p.getScreenY1() - titleFontsize);
+    }
+
+    void drawXlabel(const proj<double>& p) const {
+        vector<array<float, 4>> geom = aCCb::vectorFont::renderText(xlabel);
+        geom = aCCb::vectorFont::centerX(geom);
+        int w = aCCb::vectorFont::getWidth(geom);
+        aCCbWidget::renderText(geom, axisLabelFontsize, p.getScreenXCenter() - w, p.getScreenY0() + fontsize);
+    }
+
+    void drawYlabel(const proj<double>& p) const {
+        vector<array<float, 4>> geom = aCCb::vectorFont::renderText(ylabel);
+        aCCb::vectorFont::rotate270(geom);
+        geom = aCCb::vectorFont::centerY(geom);
+        int h = aCCb::vectorFont::getHeight(geom);
+        aCCbWidget::renderText(geom, axisLabelFontsize, p.getScreenX0() - fontsize, p.getScreenYCenter() - h);
     }
 
    public:
@@ -222,8 +246,41 @@ class plot2d : public Fl_Box {
         : Fl_Box(x, y, w, h, l), evtMan(this) {}
     ~plot2d() {}
 
-    void drawAxes() {
-        proj<double> p = projDataToScreen<double>();
+    void setTitle(const string& v) {
+        title = v;
+    }
+
+    void setXlabel(const string& v) {
+        xlabel = v;
+    }
+
+    void setYlabel(const string& v) {
+        ylabel = v;
+    }
+
+    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const marker_cl* marker) {
+        allDrawJobs.addTrace(drawJob(dataX, dataY, marker));
+    }
+
+    void autoscale() {
+        const double inf = std::numeric_limits<float>::infinity();
+        x0 = inf;
+        x1 = -inf;
+        y0 = inf;
+        y1 = -inf;
+        allDrawJobs.updateAutoscale(x0, y0, x1, y1);
+        if (std::isinf(x0)) x0 = -1;
+        if (std::isinf(x1)) x1 = 1;
+        if (std::isinf(y0)) y0 = -1;
+        if (std::isinf(y1)) y1 = 1;
+    }
+
+   protected:
+    void drawAxes(const proj<double> p) {
+        drawTitle(p);
+        drawXlabel(p);
+        drawXlabel(p);
+        drawYlabel(p);
         vector<double> xAxisDeltas = axisTics::getTicDelta(x0, x1);
         double xAxisDeltaMajor = xAxisDeltas[0];
         double xAxisDeltaMinor = xAxisDeltas[1];
@@ -321,8 +378,6 @@ class plot2d : public Fl_Box {
     void draw() {
         this->Fl_Box::draw();
 
-        axisMarginLeft = fontsize;  // TBD move
-        axisMarginBottom = fontsize;
         proj<double> p = projDataToScreen<double>();
         const int screenX = p.getScreenX0();
         const int screenY = p.getScreenY1();
@@ -342,7 +397,7 @@ class plot2d : public Fl_Box {
 
         {
             auto begin = std::chrono::high_resolution_clock::now();
-            this->drawAxes();
+            this->drawAxes(p);
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
             cout << "axes:\t" << 1e-6 * (double)duration << " ms" << endl;
@@ -386,29 +441,11 @@ class plot2d : public Fl_Box {
         }
     }
 
-    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const marker_cl* marker) {
-        allDrawJobs.addTrace(drawJob(dataX, dataY, marker));
-    }
-
-    void autoscale() {
-        const double inf = std::numeric_limits<float>::infinity();
-        x0 = inf;
-        x1 = -inf;
-        y0 = inf;
-        y1 = -inf;
-        allDrawJobs.updateAutoscale(x0, y0, x1, y1);
-        if (std::isinf(x0)) x0 = -1;
-        if (std::isinf(x1)) x1 = 1;
-        if (std::isinf(y0)) y0 = -1;
-        if (std::isinf(y1)) y1 = 1;
-    }
-
-   protected:
     allDrawJobs_cl allDrawJobs;
 
     float fontsize = 14;
-    int axisMarginLeft;
-    int axisMarginBottom;
+    float titleFontsize = 18;
+    float axisLabelFontsize = fontsize;
     const int minorTicLength = 3;
     const int majorTicLength = 7;
 
@@ -417,6 +454,15 @@ class plot2d : public Fl_Box {
     double x1 = 2;
     double y0 = 1.23;
     double y1 = 1.24;
+
+    //* if false, use cached bitmap. Otherwise redraw from data. */
     bool needFullRedraw = true;
+
+    //* title displayed on top of the plot */
+    string title = "";
+    //* x axis label displayed at the bottom */
+    string xlabel = "";
+    //* y axis label displayed on the left */
+    string ylabel = "";
 };
 }  // namespace aCCb

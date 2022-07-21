@@ -1394,12 +1394,18 @@ std::vector<std::array<float, 4>> renderText(const char* text) {
 
             x1 += curX;
             x2 += curX;
-            std::array<float, 4> v{f * x1, f * y1, f * x2, f * y2};
-            r.push_back(v);
+            if (glyphIx > 0) { // don't render space (a dot)
+                std::array<float, 4> v{f * x1, f * y1, f * x2, f * y2};
+                r.push_back(v);
+            }
         }
         curX += glyphWidth;
     }
     return r;
+}
+
+std::vector<std::array<float, 4>> renderText(const string& text) {
+    return renderText(text.c_str());
 }
 
 std::array<float, 4> getBoundingBox(const std::vector<std::array<float, 4>>& vec) {
@@ -1430,6 +1436,16 @@ std::vector<std::array<float, 4>> centerX(const std::vector<std::array<float, 4>
     }
     return r;
 }
+
+int getWidth(const std::vector<std::array<float, 4>>& geom) {
+    std::array<float, 4> bbox = getBoundingBox(geom);
+    return bbox[2] - bbox[0];
+};
+
+int getHeight(const std::vector<std::array<float, 4>>& geom) {
+    std::array<float, 4> bbox = getBoundingBox(geom);
+    return bbox[3] - bbox[1];
+};
 
 std::vector<std::array<float, 4>> centerY(const std::vector<std::array<float, 4>>& geom) {
     std::array<float, 4> bbox = getBoundingBox(geom);

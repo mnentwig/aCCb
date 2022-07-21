@@ -340,7 +340,7 @@ class markerMan_cl {
 };
 
 int main(int argc, const char **argv) {
-    const char *tmp[] = {"execname", "-trace", "-dataY", "out2.float", "-marker", "g.3"};
+    const char *tmp[] = {"execname", "-trace", "-dataY", "out2.float", "-marker", "g.3", "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel"};
     argv = tmp;
     argc = sizeof(tmp) / sizeof(tmp[0]);
 
@@ -375,7 +375,9 @@ int main(int argc, const char **argv) {
         w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), m);
     }
     w.tb->autoscale();
-
+    w.tb->setTitle(l.title);
+    w.tb->setXlabel(l.xlabel);
+    w.tb->setYlabel(l.ylabel);
     w.show();
     return Fl::run();
 }

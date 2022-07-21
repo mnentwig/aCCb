@@ -58,12 +58,18 @@ class proj {
     inline int getScreenX0() const {
         return screenX0;
     }
+    inline int getScreenY0() const {
+        return screenY0;
+    }
     inline int getScreenY1() const {
         return screenY1;
     }
-    //    inline int getScreenY0() const {
-    //       return screenY0;
-    //  }
+    inline int getScreenXCenter() const {
+        return (screenX0 + screenX1) / 2;
+    }
+    inline int getScreenYCenter() const {
+        return (screenY0 + screenY1) / 2;
+    }
     inline T getDataX0() const {
         return dataX0;
     }
