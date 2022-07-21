@@ -237,3 +237,12 @@ Forget "virtual" => quality bug (upcasting to the base class then calling a meth
 
 ## Notes: Address of element in STL container
 The element can move in memory e.g. realloc to create more space. Check, under which conditions an iterator is invalidated.
+
+## Notes: Profiling
+```
+auto begin = std::chrono::high_resolution_clock::now();
+do_something()
+auto end = std::chrono::high_resolution_clock::now();
+auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+cout << 1e6 * (double)duration << " ms" << endl;
+```

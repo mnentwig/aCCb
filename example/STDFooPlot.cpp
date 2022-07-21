@@ -13,7 +13,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
-using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::map, std::pair;
+using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::map, std::pair, std::cerr;
 
 class myMenu : public aCCbWidget {
    public:
@@ -52,7 +52,6 @@ class myMenu : public aCCbWidget {
 class myTestWin {
    public:
     myTestWin() {
-        setupMarkers();
         this->window = new Fl_Double_Window(1280, 800);
         this->window->color(FL_BLACK);
         this->tb = new aCCb::plot2d(0, 0, 800, 800);
@@ -61,15 +60,6 @@ class myTestWin {
         menu->color(FL_GREEN);
         window->resizable(this->tb);
         window->end();
-
-        const string fn = "out2.float";
-        dataByFilename[fn] = aCCb::binaryIo::file2vec<float>(fn);
-
-        //        marker_cl *m = markers["g.1"];
-        marker_cl *m = markers["w.3"];
-        assert(m);
-        tb->addTrace(NULL, &(dataByFilename[fn]), m);
-        tb->autoscale();
     }
 
     void show() {
@@ -78,13 +68,199 @@ class myTestWin {
 
     ~myTestWin() {
         delete this->window;  // deletes children recursively
-        for (auto v : markers)
-            delete v.second;
+    }
+    aCCb::plot2d *tb;
+
+   protected:
+    aCCbWidget *menu;
+    Fl_Double_Window *window;
+};
+
+// ==============================================================================
+// command line parser: base class for argument
+// ==============================================================================
+class argObj {
+   public:
+    argObj(string token) : token(token), state(""), stack(), closed(false) {}
+
+    virtual bool acceptArg_stateSet(const string &arg) {
+        throw runtime_error("?? " + token + ":state implementation is missing for '" + state + "' state ??");
+    }
+    virtual bool acceptArg_stateUnset(const string &arg) {
+        while (stack.size() > 0) {
+            argObj *child = stack.back();
+            // === feed the argument to the topmost element on the stack ===
+            if (child->acceptArg(arg))
+                return true;  // child accepted (and stays open)
+
+            // === child is implicitly closed ===
+            child->close();
+            stack.pop_back();
+        }
+
+        // === handle standard close argument '-;' ===
+        // note, removal from the parent's stack is delayed
+        if (arg == "-end") {
+            assert(stack.size() == 0);
+            closed = true;
+            return true;
+        }
+
+        return false;
+    }
+    void close() {
+        if (closed) return;
+        if (state != "") usage(token + ": expecting argument for '" + state + "'");
+        closed = true;
+        for (auto it = stack.begin(); it != stack.end(); ++it)
+            (*it)->close();
+        stack.clear();
+    }
+
+    bool acceptArg(const string &arg) {
+        if (closed)
+            return false;
+        if (state == "")
+            return acceptArg_stateUnset(arg);
+        else
+            return acceptArg_stateSet(arg);
+    }
+
+    void usage(const string &msg) {
+        cerr << msg << endl;
+        cerr << "usage:" << endl;
+        cerr << "-trace" << endl;
+        cerr << "   -dataX filename" << endl;
+        cerr << "   -dataY filename" << endl;
+        cerr << "   -mask filename" << endl;
+        cerr << "   -marker (desc)" << endl;
+        exit(/*EXIT_FAILURE*/ -1);
     }
 
    protected:
-    map<string, marker_cl *> markers;
-    void setupMarkers() {
+    //* friendly name for messages */
+    string token;
+    //* purpose of the next expected argument (if any) */
+    string state;
+    //* objects defined earlier on the command line that may still use arguments not understood by the current object */
+    std::vector<argObj *> stack;
+    bool closed;
+};
+
+// ==============================================================================
+// command line parser: '-trace' structure
+// ==============================================================================
+class trace : public argObj {
+   public:
+    trace() : argObj("-trace") {}
+    bool acceptArg_stateUnset(const string &a) {
+        if (std::find(switchArgs.cbegin(), switchArgs.cend(), a) != switchArgs.cend()) {
+            // implement switches here
+        } else if (std::find(stateArgs.cbegin(), stateArgs.cend(), a) != stateArgs.cend()) {
+            state = a;
+        } else {
+            return argObj::acceptArg_stateUnset(a);
+        };
+        return true;
+    }
+
+    bool acceptArg_stateSet(const string &a) {
+        if (state == "-dataX")
+            dataX = a;
+        else if (state == "-dataY")
+            dataY = a;
+        else if (state == "-mask")
+            mask = a;
+        else if (state == "-marker")
+            marker = a;
+        else
+            throw runtime_error("?? state implementation missing: " + state + " ??");
+        state = "";
+        return true;
+    }
+
+    string dataX;
+    string dataY;
+    string mask;
+    string marker;
+
+   protected:
+    const vector<string> stateArgs{"-dataX", "-dataY", "-mask", "-marker"};
+    const vector<string> switchArgs;
+};
+
+// ==============================================================================
+// command line parser: root level
+// ==============================================================================
+class loader : public argObj {
+   public:
+    loader() : argObj("") {}
+    bool acceptArg_stateUnset(const string &a) {
+        if (std::find(switchArgs.cbegin(), switchArgs.cend(), a) != switchArgs.cend()) {
+            if (a == "-trace") {
+                traces.push_back(trace());
+                stack.push_back(&traces.back());
+            } else
+                throw new runtime_error(token + "?? unsupported switch '" + a + "'");
+        } else if (std::find(stateArgs.cbegin(), stateArgs.cend(), a) != stateArgs.cend()) {
+            state = a;
+        } else
+            return argObj::acceptArg_stateUnset(a);
+        return true;
+    }
+
+    bool acceptArg_stateSet(const string &a) {
+        if (state == "-title") {
+            title = a;
+        } else if (state == "-xlabel") {
+            xlabel = a;
+        } else if (state == "-ylabel") {
+            ylabel = a;
+        } else
+            return argObj::acceptArg_stateSet(a);
+        state = "";
+        return true;
+    }
+
+    const vector<string> stateArgs{"-title", "-xlabel", "-ylabel", "-xlines"};
+    const vector<string> switchArgs{"-trace", "-debug"};
+    string title;
+    string xlabel;
+    string ylabel;
+    vector<trace> traces;
+    vector<float> xlines;
+    vector<float> ylines;
+};
+
+class traceDataMan_cl {
+   public:
+    traceDataMan_cl() {}
+    void loadData(const string &filename) {
+        if (filename == "")
+            return;
+        // todo: make filename canonical
+        if (dataByFilename.find(filename) != dataByFilename.end())
+            return;
+        // todo: support multiple filetypes
+        dataByFilename[filename] = aCCb::binaryIo::file2vec<float>(filename);
+    }
+
+    vector<float> *getData(const string &filename) {
+        if (filename == "")
+            return NULL;
+        auto it = dataByFilename.find(filename);
+        if (it == dataByFilename.end())
+            throw runtime_error("?? unknown datafile ??");
+        return &(it->second);
+    }
+
+   protected:
+    map<string, vector<float>> dataByFilename;
+};
+
+class markerMan_cl {
+   public:
+    markerMan_cl() {
         // =======================================
         // set up markers
         // =======================================
@@ -146,168 +322,59 @@ class myTestWin {
             markers[key] = new marker_cl(sequence, rgba, id);
         }  // for colors
     }
-    aCCbWidget *menu;
-    Fl_Double_Window *window;
-    aCCb::plot2d *tb;
-    map<string, vector<float>> dataByFilename;
-};
 
-// ==============================================================================
-// command line parser: base class for argument
-// ==============================================================================
-class argObj {
-   public:
-    argObj(string token) : token(token), state(""), stack(), closed(false) {}
-
-    virtual bool acceptArg_stateSet(const string &arg) {
-        throw runtime_error("?? " + token + ":state implementation is missing for '" + state + "' state ??");
-    }
-    virtual bool acceptArg_stateUnset(const string &arg) {
-        while (stack.size() > 0) {
-            argObj *child = stack.back();
-            // === feed the argument to the topmost element on the stack ===
-            if (child->acceptArg(arg))
-                return true;  // child accepted (and stays open)
-
-            // === child is implicitly closed ===
-            child->close();
-            stack.pop_back();
-        }
-
-        // === handle standard close argument '-;' ===
-        // note, removal from the parent's stack is delayed
-        if (arg == "-end") {
-            assert(stack.size() == 0);
-            closed = true;
-            return true;
-        }
-
-        return false;
-    }
-    void close() {
-        if (closed) return;
-        if (state != "") throw runtime_error(token + " expecting argument for '" + state + "'");
-        closed = true;
-        for (auto it = stack.begin(); it != stack.end(); ++it)
-            (*it)->close();
-        stack.clear();
+    const marker_cl *getMarker(const string &desc) const {
+        auto it = markers.find(desc);
+        if (it == markers.end())
+            return NULL;
+        return it->second;
     }
 
-    bool acceptArg(const string &arg) {
-        if (closed)
-            return false;
-        if (state == "")
-            return acceptArg_stateUnset(arg);
-        else
-            return acceptArg_stateSet(arg);
+    ~markerMan_cl() {
+        for (auto v : markers)
+            delete v.second;
     }
 
    protected:
-    //* friendly name for messages */
-    string token;
-    //* purpose of the next expected argument (if any) */
-    string state;
-    //* objects defined earlier on the command line that may still use arguments not understood by the current object */
-    std::vector<argObj *> stack;
-    bool closed;
-};
-
-// ==============================================================================
-// command line parser: '-trace' structure
-// ==============================================================================
-class trace : public argObj {
-   public:
-    trace() : argObj("-trace") {}
-    bool acceptArg_stateUnset(const string &a) {
-        if (std::find(switchArgs.cbegin(), switchArgs.cend(), a) != switchArgs.cend()) {
-            // implement switches here
-        } else if (std::find(stateArgs.cbegin(), stateArgs.cend(), a) != stateArgs.cend()) {
-            state = a;
-        } else {
-            return argObj::acceptArg_stateUnset(a);
-        };
-        return true;
-    }
-
-    bool acceptArg_stateSet(const string &a) {
-        if (state == "-dataX")
-            dataX = a;
-        else if (state == "-dataY")
-            dataY = a;
-        else if (state == "-mask")
-            mask = a;
-        else if (state == "-marker")
-            marker = a;
-        else
-            throw runtime_error("?? state implementation missing: " + state + " ??");
-        state = "";
-        return true;
-    }
-
-   protected:
-    const vector<string> stateArgs{"-dataX", "-dataY", "-mask", "-marker"};
-    const vector<string> switchArgs;
-
-    string dataX;
-    string dataY;
-    string mask;
-    string marker;
-};
-
-// ==============================================================================
-// command line parser: root level
-// ==============================================================================
-class loader : public argObj {
-   public:
-    loader() : argObj("") {}
-    bool acceptArg_stateUnset(const string &a) {
-        if (std::find(switchArgs.cbegin(), switchArgs.cend(), a) != switchArgs.cend()) {
-            if (a == "-trace") {
-                traces.push_back(trace());
-                stack.push_back(&traces.back());
-            } else
-                throw new runtime_error(token + "?? unsupported switch '" + a + "'");
-        } else if (std::find(stateArgs.cbegin(), stateArgs.cend(), a) != stateArgs.cend()) {
-            state = a;
-        } else
-            return argObj::acceptArg_stateUnset(a);
-        return true;
-    }
-
-    bool acceptArg_stateSet(const string &a) {
-        if (state == "-title") {
-            title = a;
-        } else if (state == "-xlabel") {
-            xlabel = a;
-        } else if (state == "-ylabel") {
-            ylabel = a;
-        } else
-            return argObj::acceptArg_stateSet(a);
-        state = "";
-        return true;
-    }
-
-   protected:
-    const vector<string> stateArgs{"-title", "-xlabel", "-ylabel", "-xlines"};
-    const vector<string> switchArgs{"-trace", "-debug"};
-    string title;
-    string xlabel;
-    string ylabel;
-    vector<trace> traces;
-    vector<float> xlines;
-    vector<float> ylines;
+    map<string, marker_cl *> markers;
 };
 
 int main(int argc, const char **argv) {
+    const char *tmp[] = {"execname", "-trace", "-dataY", "out2.float", "-marker", "g.3"};
+    argv = tmp;
+    argc = sizeof(tmp) / sizeof(tmp[0]);
+
+    Fl::visual(FL_RGB);
+
+    //* collects command line arguments */
     loader l;
     for (int ixArg = 1; ixArg < argc; ++ixArg) {
         string a = argv[ixArg];
         if (!l.acceptArg(a))
-            throw runtime_error("unexpected argument '" + a + "'");
+            l.usage("unexpected argument '" + a + "'");
     }
     l.close();
-    Fl::visual(FL_RGB);
+
+    //* GUI drawing code */
     myTestWin w;
+
+    //* stores all trace data */
+    traceDataMan_cl traceDataMan;
+
+    //* provides all markers */
+    markerMan_cl markerMan;
+    for (auto t : l.traces) {
+        traceDataMan.loadData(t.dataX);
+        traceDataMan.loadData(t.dataY);
+        if (t.dataY == "")
+            throw runtime_error("-trace needs -dataY");
+        const marker_cl *m = markerMan.getMarker(t.marker);
+        if (m == NULL)
+            l.usage("invalid marker description '" + t.marker + "'. Valid example: g.1");
+
+        w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), m);
+    }
+    w.tb->autoscale();
 
     w.show();
     return Fl::run();
