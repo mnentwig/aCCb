@@ -65,17 +65,21 @@ class myTestWin {
         const string fn = "out2.float";
         dataByFilename[fn] = aCCb::binaryIo::file2vec<float>(fn);
 
-//        marker_cl *m = markers["g.1"];
+        //        marker_cl *m = markers["g.1"];
         marker_cl *m = markers["w.3"];
         assert(m);
         tb->addTrace(NULL, &(dataByFilename[fn]), m);
         tb->autoscale();
     }
+
     void show() {
         this->window->show();
     }
+
     ~myTestWin() {
         delete this->window;  // deletes children recursively
+        for (auto v : markers)
+            delete v.second;
     }
 
    protected:
@@ -84,7 +88,7 @@ class myTestWin {
         // =======================================
         // set up markers
         // =======================================
-        vector<pair<char, uint32_t>> colors{
+        const vector<pair<char, uint32_t>> colors{
             {'k', 0xFF222222},
             {'r', 0xFF0000FF},
             {'g', 0xFF00FF00},

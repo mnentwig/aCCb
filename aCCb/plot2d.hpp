@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cmath>  // isinf
 #include <future>
 #include <iostream>
@@ -15,8 +16,8 @@
 
 #include "plot2d/axisTics.hpp"
 #include "plot2d/drawJob.hpp"
-#include "plot2d/proj.hpp"
 #include "plot2d/marker.hpp"
+#include "plot2d/proj.hpp"
 #include "vectorText.hpp"
 #include "widget.hpp"
 
@@ -300,7 +301,7 @@ class plot2d : public Fl_Box {
             lastH = h;
             data = fl_read_image(data, x, y, w, h);
         }
-        bool restore(int x, int y, int w, int h) {
+        bool restore(int x, int y, int w, int h) const {
             if ((w != lastW) || (h != lastH))
                 return false;
             Fl_RGB_Image im((const uchar*)&data[0], w, h, 3);
@@ -310,6 +311,8 @@ class plot2d : public Fl_Box {
         ~cachedImage_cl() {
             delete[] data;
         }
+
+       protected:
         uchar* data;
         int lastW;
         int lastH;
@@ -337,16 +340,36 @@ class plot2d : public Fl_Box {
         fl_line_style(FL_SOLID);
         fl_color(FL_GREEN);
 
-        this->drawAxes();
+        {
+            auto begin = std::chrono::high_resolution_clock::now();
+            this->drawAxes();
+            auto end = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            cout << "axes:\t" << 1e-6 * (double)duration << " ms" << endl;
+        }
 
         // === plot ===
         fl_push_clip(screenX, screenY, width, height);
-        allDrawJobs.draw(p);
+        {
+            auto begin = std::chrono::high_resolution_clock::now();
+
+            allDrawJobs.draw(p);
+            auto end = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            cout << "drawJobs:\t" << 1e-6 * (double)duration << " ms" << endl;
+        }
         fl_pop_clip();
 
         // === save whole drawing area image for cursor operations ===
         // todo include axes
-        cachedImage.capture(screenX, screenY, width, height);
+        {
+            auto begin = std::chrono::high_resolution_clock::now();
+
+            cachedImage.capture(screenX, screenY, width, height);
+            auto end = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            cout << "cache:\t" << 1e-6 * (double)duration << " ms" << endl;
+        }
 
         needFullRedraw = false;
     skipDataDrawing:
@@ -363,7 +386,7 @@ class plot2d : public Fl_Box {
         }
     }
 
-    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const marker_cl* marker) {    
+    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const marker_cl* marker) {
         allDrawJobs.addTrace(drawJob(dataX, dataY, marker));
     }
 
