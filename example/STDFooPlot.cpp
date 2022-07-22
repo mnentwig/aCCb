@@ -83,7 +83,7 @@ class argObj {
    public:
     argObj(string token) : token(token), state(""), stack(), closed(false) {}
 
-    virtual bool acceptArg_stateSet(const string &arg) {
+    virtual bool acceptArg_stateSet(const string &/*arg*/) {
         throw runtime_error("?? " + token + ":state implementation is missing for '" + state + "' state ??");
     }
     virtual bool acceptArg_stateUnset(const string &arg) {

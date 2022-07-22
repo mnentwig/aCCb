@@ -396,11 +396,11 @@ class plot2d : public Fl_Box {
         fl_color(FL_GREEN);
 
         {
-            auto begin = std::chrono::high_resolution_clock::now();
+            //auto begin = std::chrono::high_resolution_clock::now();
             this->drawAxes(p);
-            auto end = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-            cout << "axes:\t" << 1e-6 * (double)duration << " ms" << endl;
+            //auto end = std::chrono::high_resolution_clock::now();
+            //auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            //cout << "axes:\t" << 1e-6 * (double)duration << " ms" << endl;
         }
 
         // === plot ===
@@ -418,12 +418,12 @@ class plot2d : public Fl_Box {
         // === save whole drawing area image for cursor operations ===
         // todo include axes
         {
-            auto begin = std::chrono::high_resolution_clock::now();
+            //auto begin = std::chrono::high_resolution_clock::now();
 
             cachedImage.capture(screenX, screenY, width, height);
-            auto end = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-            cout << "cache:\t" << 1e-6 * (double)duration << " ms" << endl;
+            //auto end = std::chrono::high_resolution_clock::now();
+            //auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            //cout << "cache:\t" << 1e-6 * (double)duration << " ms" << endl;
         }
 
         needFullRedraw = false;

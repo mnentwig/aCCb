@@ -10,67 +10,89 @@
 #include "plot2d/marker.hpp"
 #include "plot2d/proj.hpp"
 using std::vector, std::string;
-typedef uint8_t stencil_t;
+typedef uint8_t stencil_t; // bool: 32 ms; uint8: 4.5 ms; uint16: 6 ms uint32_t: 9 ms uint64_t: 16 ms
 class drawJob {
+   protected:
+    // multithreaded job description.
+    // passed by value - don't put anything large inside
+    class job_t {
+       public:
+        job_t(size_t ixStart, size_t ixEnd, const vector<float>* pDataX, const vector<float>* pDataY, const proj<float> p, vector<stencil_t>* pStencil)
+            : ixStart(ixStart),
+              ixEnd(ixEnd),
+              pDataX(pDataX),
+              pDataY(pDataY),
+              p(p),
+              pStencil(pStencil) {}
+
+        const size_t ixStart;
+        const size_t ixEnd;
+        const vector<float>* pDataX;
+        const vector<float>* pDataY;
+        const proj<float> p;
+        vector<stencil_t>* pStencil;
+    };
+
+    static void drawDotsXY(const job_t job) {
+        assert(job.pDataX->size() == job.pDataY->size());
+        const int width = job.p.getScreenWidth();
+        const int height = job.p.getScreenHeight();
+
+        for (size_t ix = job.ixStart; ix < job.ixEnd; ++ix) {
+            float plotX = (*(job.pDataX))[ix];
+            float plotY = (*(job.pDataY))[ix];
+            int pixX = job.p.projX(plotX);
+            int pixY = job.p.projY(plotY);
+            if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
+                (*job.pStencil)[pixY * width + pixX] = 1;
+        }  // for ix
+    }
+
+    static void drawDotsY(const job_t job) {
+        const int width = job.p.getScreenWidth();
+        const int height = job.p.getScreenHeight();
+
+        for (size_t ix = job.ixStart; ix < job.ixEnd; ++ix) {
+            float plotX = ix + 1;
+            float plotY = (*(job.pDataY))[ix];
+            int pixX = job.p.projX(plotX);
+            int pixY = job.p.projY(plotY);
+            if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
+                (*job.pStencil)[pixY * width + pixX] = 1;
+        }  // for ix
+    }
+
    public:
-    drawJob(const vector<float>* dataX, const vector<float>* dataY, const marker_cl* marker) : marker(marker), dataX(dataX), dataY(dataY) {}
+    drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const marker_cl* marker) : marker(marker), pDataX(pDataX), pDataY(pDataY) {}
 
     void drawData2stencil(const proj<float> p, vector<stencil_t>& stencil) {
-        size_t nData = dataY->size();
-        int width = p.getScreenWidth();
-        int height = p.getScreenHeight();
+        size_t nData = pDataY->size();
 
         // === mark pixels that show a data point ===
-        //  O{nData} but can be parallelized. For a 10M dataset, 1000 repetitions: 29 secs 1 thread) > 6 s (8 threads)
-        int nTasks = 1;
-        if (nData < 10000)
-            nTasks = 1;
-        else if (nData < 100000)
-            nTasks = 4;
-        else
-            nTasks = 8;
-        vector<std::future<void>> jobs;
-        size_t chunk = std::ceil((float)nData / nTasks);
-        for (int ixTask = 0; ixTask < nTasks; ++ixTask) {
-            size_t taskIxStart = ixTask * chunk;
-            size_t taskIxEnd = std::min(taskIxStart + chunk, nData);
-
-            if (dataX) {
-                assert(dataX->size() == dataY->size());
-                auto job = [this, &stencil, width, height, &p, taskIxStart, taskIxEnd]() {
-                    for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
-                        float plotX = (*(this->dataX))[ix];
-                        float plotY = (*(this->dataY))[ix];
-                        int pixX = p.projX(plotX);
-                        int pixY = p.projY(plotY);
-                        if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                            stencil[pixY * width + pixX] = 1;
-                    }
-                };
-                jobs.push_back(std::async(job));
-            } else {
-                auto job = [this, &stencil, width, height, &p, taskIxStart, taskIxEnd]() {
-                    for (size_t ix = taskIxStart; ix < taskIxEnd; ++ix) {
-                        const float plotX = (float)(ix + 1);
-                        const float plotY = (*(this->dataY))[ix];
-                        const int pixX = p.projX(plotX);
-                        const int pixY = p.projY(plotY);
-                        if ((pixX >= 0) && (pixX < width) && (pixY >= 0) && (pixY < height))
-                            stencil[pixY * width + pixX] = 1;
-                    }
-                };
-                jobs.push_back(std::async(job));
-            }
-        }  // for ixTask
-        for (auto it = jobs.begin(); it != jobs.end(); ++it)
-            (*it).get();
+        const size_t chunk = 65536 * 16;
+        vector<job_t> jobs;
+        vector<std::future<void>> futs;
+        for (size_t chunkIxStart = 0; chunkIxStart < nData; chunkIxStart += chunk) {
+            size_t chunkIxEnd = std::min(chunkIxStart + chunk, nData);
+            job_t job(chunkIxStart, chunkIxEnd, pDataX, pDataY, p, &stencil);
+            jobs.push_back(job);
+            if (pDataX)
+                futs.push_back(std::async(drawDotsXY, jobs.back()));
+            else
+                futs.push_back(std::async(drawDotsY, jobs.back()));
+        }
+        for (std::future<void>& f : futs)
+            f.get();
     }
 
     static vector<stencil_t> convolveStencil(const vector<stencil_t>& stencil, int width, int height, const marker_cl* marker) {
-        vector<stencil_t> r(stencil.size());
+        vector<stencil_t> r(stencil);  // center pixel
+//        return r;
         int count = 0;
         for (int dx = -marker->dxMinus; dx <= marker->dxPlus; ++dx) {
             for (int dy = -marker->dxMinus; dy <= marker->dxPlus; ++dy) {
+                if ((dx == 0) && (dy == 0))
+                    continue; // center pixel is set by return value constructor
                 if (marker->seq[count++]) {
                     int ixSrc = 0;
                     int ixDest = 0;
@@ -90,7 +112,9 @@ class drawJob {
                             assert(ixDest >= 0);
                             assert(ixSrc < (int)r.size());
                             assert(ixDest < (int)r.size());
-                            r[ixDest++] |= stencil[ixSrc++];
+                            r[ixDest] = r[ixDest] | stencil[ixSrc];
+                            ++ixDest;
+                            ++ixSrc;
                         }  // for column
                         ixDest += absDx;
                         ixSrc += absDx;
@@ -114,7 +138,7 @@ class drawJob {
 
     //* render the RGBA image repeatedly, as defined by the marker sequence */
     static void
-    drawRgba2screen(const vector<uint32_t>& rgba, int screenX, int screenY, int screenWidth, int screenHeight, const marker_cl* marker) {
+    drawRgba2screen(const vector<uint32_t>& rgba, int screenX, int screenY, int screenWidth, int screenHeight) {
         assert(screenWidth * screenHeight == (int)rgba.size());
         Fl_RGB_Image im((const uchar*)&rgba[0], screenWidth, screenHeight, 4);
         im.draw(screenX, screenY);
@@ -127,17 +151,17 @@ class drawJob {
         float x1f = -inf;
         float y0f = inf;
         float y1f = -inf;
-        for (float y : *dataY) {
+        for (float y : *pDataY) {
             if (!std::isinf(y) && !std::isnan(y)) {
                 y0f = std::min(y0f, y);
                 y1f = std::max(y1f, y);
             }
         }
-        if (dataX == NULL) {
+        if (pDataX == NULL) {
             x0f = std::min(x0f, 1.0f);
-            x1f = std::max(x1f, (float)(dataY->size() + 1));
+            x1f = std::max(x1f, (float)(pDataY->size() + 1));
         } else {
-            for (float x : *dataX) {
+            for (float x : *pDataX) {
                 if (!std::isinf(x) && !std::isnan(x)) {
                     x0f = std::min(x0f, x);
                     x1f = std::max(x1f, x);
@@ -153,8 +177,8 @@ class drawJob {
     const marker_cl* marker;
 
    protected:
-    const vector<float>* dataX;
-    const vector<float>* dataY;
+    const vector<float>* pDataX;
+    const vector<float>* pDataY;
 };  // class drawJob
 
 class allDrawJobs_cl {
@@ -183,7 +207,7 @@ class allDrawJobs_cl {
                 // Draw stencil...
                 vector<stencil_t> sConv = drawJob::convolveStencil(stencil, screenWidth, screenHeight, currentMarker);
                 drawJob::drawStencil2rgba(sConv, screenWidth, screenHeight, currentMarker, /*out*/ rgba);
-                drawJob::drawRgba2screen(rgba, screenX, screenY, screenWidth, screenHeight, currentMarker);
+                drawJob::drawRgba2screen(rgba, screenX, screenY, screenWidth, screenHeight);
                 // ... and clear
                 std::fill(stencil.begin(), stencil.end(), 0);
             }  // if incompatible with stencil contents
@@ -194,7 +218,7 @@ class allDrawJobs_cl {
         if (currentMarker != NULL) {
             vector<stencil_t> sConv = drawJob::convolveStencil(stencil, screenWidth, screenHeight, currentMarker);
             drawJob::drawStencil2rgba(sConv, screenWidth, screenHeight, currentMarker, /*out*/ rgba);
-            drawJob::drawRgba2screen(rgba, screenX, screenY, screenWidth, screenHeight, currentMarker);
+            drawJob::drawRgba2screen(rgba, screenX, screenY, screenWidth, screenHeight);
         }
     }
 

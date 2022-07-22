@@ -105,9 +105,9 @@ class aCCbWidget : public Fl_Box {
 
    protected:
     Fl_Color colorLabel = FL_GREEN;
-    virtual void callbackCheckbutton(Fl_Check_Button *w) {}
-    virtual void callbackButton(Fl_Button *w) {}
-    virtual void callbackInput(Fl_Input *w) {}
+    virtual void callbackCheckbutton(Fl_Check_Button *) {}
+    virtual void callbackButton(Fl_Button *) {}
+    virtual void callbackInput(Fl_Input *) {}
 
     cursor cur;
 
