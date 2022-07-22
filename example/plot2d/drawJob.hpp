@@ -29,7 +29,7 @@ class drawJob {
             nTasks = 4;
         else
             nTasks = 8;
-       vector<std::future<void>> jobs;
+        vector<std::future<void>> jobs;
         size_t chunk = std::ceil((float)nData / nTasks);
         for (int ixTask = 0; ixTask < nTasks; ++ixTask) {
             size_t taskIxStart = ixTask * chunk;
@@ -66,8 +66,42 @@ class drawJob {
             (*it).get();
     }
 
-    static void
-    drawStencil2rgba(const vector<stencil_t>& stencil, int width, int height, const marker_cl* marker, vector<uint32_t>& rgba) {
+    static vector<stencil_t> convolveStencil(const vector<stencil_t>& stencil, int width, int height, const marker_cl* marker) {
+        vector<stencil_t> r(stencil.size());
+        int count = 0;
+        for (int dx = -marker->dxMinus; dx <= marker->dxPlus; ++dx) {
+            for (int dy = -marker->dxMinus; dy <= marker->dxPlus; ++dy) {
+                if (marker->seq[count++]) {
+                    int ixSrc = 0;
+                    int ixDest = 0;
+                    int absDx = std::abs(dx);
+                    int absDy = std::abs(dy);
+                    if (dx < 0)
+                        ixSrc += absDx;
+                    if (dx > 0)
+                        ixDest += absDx;
+                    if (dy < 0)
+                        ixSrc += absDy * width;
+                    if (dy > 0)
+                        ixDest += absDy * width;
+                    for (int ixRow = height - absDy; ixRow != 0; --ixRow) {
+                        for (int ixCol = width - absDx; ixCol != 0; --ixCol) {
+                            assert(ixSrc >= 0);
+                            assert(ixDest >= 0);
+                            assert(ixSrc < (int)r.size());
+                            assert(ixDest < (int)r.size());
+                            r[ixDest++] |= stencil[ixSrc++];
+                        }  // for column
+                        ixDest += absDx;
+                        ixSrc += absDx;
+                    }  // for row
+                }      // if marker pixel enabled
+            }          // for marker column
+        }              // for marker row
+        return r;
+    }
+
+    static void drawStencil2rgba(const vector<stencil_t>& stencil, int width, int height, const marker_cl* marker, vector<uint32_t>& rgba) {
         assert((int)stencil.size() == width * height);
         assert((int)rgba.size() == width * height);
         uint32_t markerRgba = marker->rgba;
@@ -79,17 +113,11 @@ class drawJob {
     }
 
     //* render the RGBA image repeatedly, as defined by the marker sequence */
-    static void drawRgba2screen(const vector<uint32_t>& rgba, int screenX, int screenY, int screenWidth, int screenHeight, const marker_cl* marker) {
+    static void
+    drawRgba2screen(const vector<uint32_t>& rgba, int screenX, int screenY, int screenWidth, int screenHeight, const marker_cl* marker) {
         assert(screenWidth * screenHeight == (int)rgba.size());
         Fl_RGB_Image im((const uchar*)&rgba[0], screenWidth, screenHeight, 4);
-
-        int count = 0;
-        for (int dx = -marker->dxMinus; dx <= marker->dxPlus; ++dx)
-            for (int dy = -marker->dxMinus; dy <= marker->dxPlus; ++dy) {
-                if (marker->seq[count++]) {  // any non-space character in the stencil creates a shifted replica
-                    im.draw(screenX + dx, screenY + dy);
-                }
-            }
+        im.draw(screenX, screenY);
     }
 
     /** given limits are extended to include data */
@@ -153,7 +181,8 @@ class allDrawJobs_cl {
             bool stencilHoldsIncompatibleData = (currentMarker != NULL) && (currentMarker->id != j.marker->id);
             if (stencilHoldsIncompatibleData) {
                 // Draw stencil...
-                drawJob::drawStencil2rgba(stencil, screenWidth, screenHeight, currentMarker, /*out*/ rgba);
+                vector<stencil_t> sConv = drawJob::convolveStencil(stencil, screenWidth, screenHeight, currentMarker);
+                drawJob::drawStencil2rgba(sConv, screenWidth, screenHeight, currentMarker, /*out*/ rgba);
                 drawJob::drawRgba2screen(rgba, screenX, screenY, screenWidth, screenHeight, currentMarker);
                 // ... and clear
                 std::fill(stencil.begin(), stencil.end(), 0);
@@ -163,7 +192,8 @@ class allDrawJobs_cl {
         }
         // render final stencil
         if (currentMarker != NULL) {
-            drawJob::drawStencil2rgba(stencil, screenWidth, screenHeight, currentMarker, /*out*/ rgba);
+            vector<stencil_t> sConv = drawJob::convolveStencil(stencil, screenWidth, screenHeight, currentMarker);
+            drawJob::drawStencil2rgba(sConv, screenWidth, screenHeight, currentMarker, /*out*/ rgba);
             drawJob::drawRgba2screen(rgba, screenX, screenY, screenWidth, screenHeight, currentMarker);
         }
     }
