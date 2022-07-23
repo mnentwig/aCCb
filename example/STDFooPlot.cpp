@@ -1,8 +1,8 @@
-#include <../aCppCookbook/aCCb/binIo.hpp>
-#include <../aCppCookbook/aCCb/plot2d.hpp>
-#include <../aCppCookbook/aCCb/stringUtil.hpp>
-#include <../aCppCookbook/aCCb/vectorText.hpp>
-#include <../aCppCookbook/aCCb/widget.hpp>
+#include "../aCppCookbook/aCCb/binIo.hpp"
+#include "../aCppCookbook/aCCb/plot2d.hpp"
+#include "../aCppCookbook/aCCb/stringUtil.hpp"
+#include "../aCppCookbook/aCCb/vectorText.hpp"
+#include "../aCppCookbook/aCCb/widget.hpp"
 
 //#include <../aCppCookbook/aCCb/stringToNum.hpp>
 #include <cassert>
@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <iostream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -114,9 +115,10 @@ class argObj {
         if (closed) return;
         if (state != "") usage(token + ": expecting argument for '" + state + "'");
         closed = true;
-        for (auto it = stack.begin(); it != stack.end(); ++it)
-            (*it)->close();
-        stack.clear();
+        while (stack.size() > 0) {
+            stack.back()->close();
+            stack.pop_back();
+        }
     }
 
     bool acceptArg(const string &arg) {
@@ -129,13 +131,21 @@ class argObj {
     }
 
     void usage(const string &msg) {
+        exit(/*EXIT_FAILURE*/ -1);
         cerr << msg << endl;
         cerr << "usage:" << endl;
         cerr << "-trace" << endl;
-        cerr << "   -dataX filename" << endl;
-        cerr << "   -dataY filename" << endl;
-        cerr << "   -mask filename" << endl;
-        cerr << "   -marker (desc)" << endl;
+        cerr << "   -dataX (filename)" << endl;
+        cerr << "   -dataY (filename)" << endl;
+        cerr << "   -vertLineY (number) repeated use is allowed" << endl;
+        cerr << "   -horLineX (number) repeated use is allowed" << endl;
+        cerr << "   -marker (e.g. w.1 see [1])" << endl;
+        cerr << "-xlabel (text)" << endl;
+        cerr << "-ylabel (text)" << endl;
+        cerr << "-title (text)" << endl;
+        cerr << endl;
+        cerr << "[1] colors in place of 'w': krgbcmyaow" << endl;
+        cerr << "    shapes in place of '.1': .1 .2 .3 +1 +2 x1 x2 ('1' can be omitted')" << endl;
         exit(/*EXIT_FAILURE*/ -1);
     }
 
@@ -168,14 +178,20 @@ class trace : public argObj {
 
     bool acceptArg_stateSet(const string &a) {
         if (state == "-dataX")
-            dataX = a;
+            dataX = std::filesystem::canonical(a).string();
         else if (state == "-dataY")
-            dataY = a;
-        else if (state == "-mask")
-            mask = a;
+            dataY = std::filesystem::canonical(a).string();
         else if (state == "-marker")
             marker = a;
-        else
+        else if (state == "-horLineY") {
+            float v;
+            if (!aCCb::str2num(a, v)) usage("-horLineY: failed to parse number ('" + a + "')");
+            horLineY.push_back(v);
+        } else if (state == "-vertLineX") {
+            float v;
+            if (!aCCb::str2num(a, v)) usage("-vertLineX: failed to parse number ('" + a + "')");
+            vertLineX.push_back(v);
+        } else
             throw runtime_error("?? state implementation missing: " + state + " ??");
         state = "";
         return true;
@@ -183,11 +199,12 @@ class trace : public argObj {
 
     string dataX;
     string dataY;
-    string mask;
     string marker;
+    vector<float> horLineY;
+    vector<float> vertLineX;
 
    protected:
-    const vector<string> stateArgs{"-dataX", "-dataY", "-mask", "-marker"};
+    const vector<string> stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX"};
     const vector<string> switchArgs;
 };
 
@@ -224,14 +241,12 @@ class loader : public argObj {
         return true;
     }
 
-    const vector<string> stateArgs{"-title", "-xlabel", "-ylabel", "-xlines"};
-    const vector<string> switchArgs{"-trace", "-debug"};
+    const vector<string> stateArgs{"-title", "-xlabel", "-ylabel"};
+    const vector<string> switchArgs{"-trace"};
     string title;
     string xlabel;
     string ylabel;
     vector<trace> traces;
-    vector<float> xlines;
-    vector<float> ylines;
 };
 
 class traceDataMan_cl {
@@ -247,7 +262,7 @@ class traceDataMan_cl {
         if (aCCb::caseInsensitiveStringCompare(".float", ext))
             dataByFilename[filename] = aCCb::binaryIo::file2vec<float>(filename);
         else if (aCCb::caseInsensitiveStringCompare(".txt", ext))
-            dataByFilename[filename] = aCCb::binaryIo::txtfile2vec<float>(filename);
+            dataByFilename[filename] = aCCb::binaryIo::file2vec_asc<float>(filename);
         else
             throw runtime_error("unsupported data file extension");
     }
@@ -280,12 +295,12 @@ class markerMan_cl {
             {'m', 0xFF00FFFF},
             {'y', 0xFFFF00FF},
             {'a', 0xFF888888},
+            {'o', 0xFF008cFF},  // orange
             {'w', 0xFFFFFFFF}};
 
         const string dot = ".";
         const string plus = "+";
         const string cross = "x";
-        int id = 0;
         for (auto x : colors) {
             char colCode = x.first;
             uint32_t rgba = x.second;
@@ -294,7 +309,7 @@ class markerMan_cl {
 
             sequence = "X";
             key = colCode + dot + "1";
-            markers[key] = new marker_cl(sequence, rgba, id);
+            markers[key] = new marker_cl(sequence, rgba);
             markers[colCode + dot] = markers[key];
 
             sequence =
@@ -302,7 +317,7 @@ class markerMan_cl {
                 "XXX"
                 "XXX";
             key = colCode + dot + "2";
-            markers[key] = new marker_cl(sequence, rgba, id);
+            markers[key] = new marker_cl(sequence, rgba);
 
             sequence =
                 " XXX "
@@ -311,22 +326,42 @@ class markerMan_cl {
                 "XXXXX"
                 " XXX ";
             key = colCode + dot + "3";
-            markers[key] = new marker_cl(sequence, rgba, id);
+            markers[key] = new marker_cl(sequence, rgba);
 
             sequence =
                 " X "
                 "XXX"
                 " X ";
             key = colCode + plus + "1";
-            markers[key] = new marker_cl(sequence, rgba, id);
+            markers[key] = new marker_cl(sequence, rgba);
             markers[colCode + plus] = markers[key];
+
+            sequence =
+                "  X  "
+                "  X  "
+                "XXXXX"
+                "  X  "
+                "  X  ";
+            key = colCode + plus + "2";
+            markers[key] = new marker_cl(sequence, rgba);
 
             sequence =
                 "X X"
                 " X "
                 "X X";
             key = colCode + cross + "1";
-            markers[key] = new marker_cl(sequence, rgba, id);
+            markers[key] = new marker_cl(sequence, rgba);
+            markers[colCode + cross] = markers[key];
+
+            sequence =
+                "X   X"
+                " X X "
+                "  X  "
+                " X X "
+                "X   X";
+            key = colCode + cross + "2";
+            markers[key] = new marker_cl(sequence, rgba);
+
         }  // for colors
     }
 
@@ -338,16 +373,26 @@ class markerMan_cl {
     }
 
     ~markerMan_cl() {
+        // markers contains aliases e.g. "w." for "w.1"
+        // collect unique markers
+        std::set<marker_cl *> uniqueMarkers;
         for (auto v : markers)
-            delete v.second;
+            uniqueMarkers.insert(v.second);
+        // ... and clean up
+        for (auto v : uniqueMarkers)
+            delete v;
     }
 
    protected:
     map<string, marker_cl *> markers;
 };
 
-int main(int argc, const char **argv) {
-    const char *tmp[] = {"execname", "-trace", "-dataY", "out2.float", "-marker", "g.3", "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel"};
+int main2(int argc, const char **argv) {
+    const char *tmp[] = {"execname",
+                         "-trace", "-dataY", "out2.float", "-marker", "g.3",
+                         "-trace", "-dataY", "y.txt", "-dataX", "x.txt", "-marker", "wx1", /*"-vertLineY", "-1", "-vertLineY", "1",*/
+                         "-trace", "-vertLineX", "-3", "-vertLineX", "3", "-horLineY", "-3", "-horLineY", "3", "-marker", "o.1",
+                         "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel"};
     argv = tmp;
     argc = sizeof(tmp) / sizeof(tmp[0]);
 
@@ -355,6 +400,8 @@ int main(int argc, const char **argv) {
 
     //* collects command line arguments */
     loader l;
+
+    // === parse command line args ===
     for (int ixArg = 1; ixArg < argc; ++ixArg) {
         string a = argv[ixArg];
         if (!l.acceptArg(a))
@@ -373,18 +420,25 @@ int main(int argc, const char **argv) {
     for (auto t : l.traces) {
         traceDataMan.loadData(t.dataX);
         traceDataMan.loadData(t.dataY);
-        if (t.dataY == "")
-            throw runtime_error("-trace needs -dataY");
         const marker_cl *m = markerMan.getMarker(t.marker);
         if (m == NULL)
             l.usage("invalid marker description '" + t.marker + "'. Valid example: g.1");
-
-        w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), m);
+        w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), m, t.vertLineX, t.horLineY);
     }
     w.tb->autoscale();
     w.tb->setTitle(l.title);
     w.tb->setXlabel(l.xlabel);
     w.tb->setYlabel(l.ylabel);
     w.show();
-    return Fl::run();
+    Fl::run();
+    return 0;
+}
+int main(int argc, const char **argv) {
+    try {
+        main2(argc, argv);
+    } catch (std::exception &e) {
+        cerr << "exception: " << e.what() << endl;
+        return 1;
+    }
+    return 0;
 }

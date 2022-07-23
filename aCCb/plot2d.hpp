@@ -258,21 +258,26 @@ class plot2d : public Fl_Box {
         ylabel = v;
     }
 
-    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const marker_cl* marker) {
-        allDrawJobs.addTrace(drawJob(dataX, dataY, marker));
+    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) {
+        allDrawJobs.addTrace(drawJob(dataX, dataY, marker, vertLineX, horLineY));
     }
 
     void autoscale() {
         const double inf = std::numeric_limits<float>::infinity();
-        x0 = inf;
-        x1 = -inf;
-        y0 = inf;
-        y1 = -inf;
-        allDrawJobs.updateAutoscale(x0, y0, x1, y1);
-        if (std::isinf(x0)) x0 = -1;
-        if (std::isinf(x1)) x1 = 1;
-        if (std::isinf(y0)) y0 = -1;
-        if (std::isinf(y1)) y1 = 1;
+        float x0f = inf;
+        float x1f = -inf;
+        float y0f = inf;
+        float y1f = -inf;
+
+        allDrawJobs.updateAutoscale(x0f, y0f, x1f, y1f);
+        if (std::isinf(x0f)) x0 = -1;
+        if (std::isinf(x1f)) x1 = 1;
+        if (std::isinf(y0f)) y0 = -1;
+        if (std::isinf(y1f)) y1 = 1;
+        x0 = x0f;
+        y0 = y0f;
+        x1 = x1f;
+        y1 = y1f;
     }
 
    protected:
@@ -396,11 +401,11 @@ class plot2d : public Fl_Box {
         fl_color(FL_GREEN);
 
         {
-            //auto begin = std::chrono::high_resolution_clock::now();
+            // auto begin = std::chrono::high_resolution_clock::now();
             this->drawAxes(p);
-            //auto end = std::chrono::high_resolution_clock::now();
-            //auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-            //cout << "axes:\t" << 1e-6 * (double)duration << " ms" << endl;
+            // auto end = std::chrono::high_resolution_clock::now();
+            // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            // cout << "axes:\t" << 1e-6 * (double)duration << " ms" << endl;
         }
 
         // === plot ===
@@ -418,12 +423,12 @@ class plot2d : public Fl_Box {
         // === save whole drawing area image for cursor operations ===
         // todo include axes
         {
-            //auto begin = std::chrono::high_resolution_clock::now();
+            // auto begin = std::chrono::high_resolution_clock::now();
 
             cachedImage.capture(screenX, screenY, width, height);
-            //auto end = std::chrono::high_resolution_clock::now();
-            //auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-            //cout << "cache:\t" << 1e-6 * (double)duration << " ms" << endl;
+            // auto end = std::chrono::high_resolution_clock::now();
+            // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            // cout << "cache:\t" << 1e-6 * (double)duration << " ms" << endl;
         }
 
         needFullRedraw = false;

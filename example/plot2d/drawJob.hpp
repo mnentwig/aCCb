@@ -10,7 +10,7 @@
 #include "plot2d/marker.hpp"
 #include "plot2d/proj.hpp"
 using std::vector, std::string;
-typedef uint8_t stencil_t; // bool: 32 ms; uint8: 4.5 ms; uint16: 6 ms uint32_t: 9 ms uint64_t: 16 ms
+typedef uint8_t stencil_t;  // bool: 32 ms; uint8: 4.5 ms; uint16: 6 ms uint32_t: 9 ms uint64_t: 16 ms
 class drawJob {
    protected:
     // multithreaded job description.
@@ -63,12 +63,31 @@ class drawJob {
     }
 
    public:
-    drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const marker_cl* marker) : marker(marker), pDataX(pDataX), pDataY(pDataY) {}
+    drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) : marker(marker), pDataX(pDataX), pDataY(pDataY), vertLineX(vertLineX), horLineY(horLineY) {}
 
-    void drawData2stencil(const proj<float> p, vector<stencil_t>& stencil) {
+    void drawToStencil(const proj<float> p, vector<stencil_t>& stencil) {
+        // === vertical lines ===
+        const int width = p.getScreenWidth();
+        const int height = p.getScreenHeight();
+        for (float x : vertLineX) {
+            int pixX = p.projX(x);
+            if ((pixX >= 0) && (pixX < width))
+                for (int pixY = 0; pixY < height; ++pixY)
+                    stencil[pixY * width + pixX] = 1;
+        }
+
+        // === horizontal lines ===
+        for (float y : horLineY) {
+            int pixY = p.projY(y);
+            if ((pixY >= 0) && (pixY < height))
+                for (int pixX = 0; pixX < width; ++pixX)
+                    stencil[pixY * width + pixX] = 1;
+        }
+
+        // === traces ===
+        if (!pDataY)
+            return;
         size_t nData = pDataY->size();
-
-        // === mark pixels that show a data point ===
         const size_t chunk = 65536 * 16;
         vector<job_t> jobs;
         vector<std::future<void>> futs;
@@ -85,14 +104,15 @@ class drawJob {
             f.get();
     }
 
-    static vector<stencil_t> convolveStencil(const vector<stencil_t>& stencil, int width, int height, const marker_cl* marker) {
+    static vector<stencil_t>
+    convolveStencil(const vector<stencil_t>& stencil, int width, int height, const marker_cl* marker) {
         vector<stencil_t> r(stencil);  // center pixel
-//        return r;
+                                       //        return r;
         int count = 0;
         for (int dx = -marker->dxMinus; dx <= marker->dxPlus; ++dx) {
             for (int dy = -marker->dxMinus; dy <= marker->dxPlus; ++dy) {
                 if ((dx == 0) && (dy == 0))
-                    continue; // center pixel is set by return value constructor
+                    continue;  // center pixel is set by return value constructor
                 if (marker->seq[count++]) {
                     int ixSrc = 0;
                     int ixDest = 0;
@@ -145,33 +165,34 @@ class drawJob {
     }
 
     /** given limits are extended to include data */
-    void updateAutoscale(double& x0, double& x1, double& y0, double& y1) const {
-        const float inf = std::numeric_limits<float>::infinity();
-        float x0f = inf;
-        float x1f = -inf;
-        float y0f = inf;
-        float y1f = -inf;
-        for (float y : *pDataY) {
-            if (!std::isinf(y) && !std::isnan(y)) {
-                y0f = std::min(y0f, y);
-                y1f = std::max(y1f, y);
+    void updateAutoscale(float& x0, float& x1, float& y0, float& y1) const {
+        if (pDataY) {
+            for (float y : *pDataY) {
+                if (!std::isinf(y) && !std::isnan(y)) {
+                    y0 = std::min(y0, y);
+                    y1 = std::max(y1, y);
+                }
             }
-        }
-        if (pDataX == NULL) {
-            x0f = std::min(x0f, 1.0f);
-            x1f = std::max(x1f, (float)(pDataY->size() + 1));
-        } else {
-            for (float x : *pDataX) {
-                if (!std::isinf(x) && !std::isnan(x)) {
-                    x0f = std::min(x0f, x);
-                    x1f = std::max(x1f, x);
+            if (pDataX == NULL) {
+                x0 = std::min(x0, 1.0f);
+                x1 = std::max(x1, (float)(pDataY->size() + 1));
+            } else {
+                for (float x : *pDataX) {
+                    if (!std::isinf(x) && !std::isnan(x)) {
+                        x0 = std::min(x0, x);
+                        x1 = std::max(x1, x);
+                    }
                 }
             }
         }
-        x0 = (double)x0f;
-        y0 = (double)y0f;
-        x1 = (double)x1f;
-        y1 = (double)y1f;
+        for (auto y : horLineY) {
+            y0 = std::min(y0, y);
+            y1 = std::max(y1, y);
+        }
+        for (auto x : vertLineX) {
+            x0 = std::min(x0, x);
+            x1 = std::max(x1, x);
+        }
     }
 
     const marker_cl* marker;
@@ -179,6 +200,8 @@ class drawJob {
    protected:
     const vector<float>* pDataX;
     const vector<float>* pDataY;
+    vector<float> vertLineX;
+    vector<float> horLineY;
 };  // class drawJob
 
 class allDrawJobs_cl {
@@ -191,7 +214,7 @@ class allDrawJobs_cl {
         int screenY = p.getScreenY1();
 
         /* Projection to stencil at x=0 Y=0 */
-        const proj<float> pStencil(p.getDataX0(), p.getDataY1(), p.getDataX1(), p.getDataY0(), /*stencil X0*/ 0, /*stencil Y0*/ 0, /*stencil X1*/ screenWidth, /*stencil Y1*/ screenHeight);
+        const proj<float> projStencil(p.getDataX0(), p.getDataY1(), p.getDataX1(), p.getDataY0(), /*stencil X0*/ 0, /*stencil Y0*/ 0, /*stencil X1*/ screenWidth, /*stencil Y1*/ screenHeight);
 
         // ... combine subsequent traces with same marker into a  common stencil
         vector<stencil_t> stencil(screenWidth * screenHeight);
@@ -202,7 +225,7 @@ class allDrawJobs_cl {
         const marker_cl* currentMarker = NULL;
         for (auto it = drawJobs.begin(); it != drawJobs.end(); ++it) {
             drawJob& j = *it;
-            bool stencilHoldsIncompatibleData = (currentMarker != NULL) && (currentMarker->id != j.marker->id);
+            bool stencilHoldsIncompatibleData = (currentMarker != NULL) && (currentMarker != j.marker);
             if (stencilHoldsIncompatibleData) {
                 // Draw stencil...
                 vector<stencil_t> sConv = drawJob::convolveStencil(stencil, screenWidth, screenHeight, currentMarker);
@@ -211,7 +234,8 @@ class allDrawJobs_cl {
                 // ... and clear
                 std::fill(stencil.begin(), stencil.end(), 0);
             }  // if incompatible with stencil contents
-            j.drawData2stencil(pStencil, /*out*/ stencil);
+
+            j.drawToStencil(projStencil, /*out*/ stencil);
             currentMarker = j.marker;
         }
         // render final stencil
@@ -226,7 +250,7 @@ class allDrawJobs_cl {
         this->drawJobs.push_back(j);
     }
 
-    void updateAutoscale(double& x0, double& y0, double& x1, double& y1) const {
+    void updateAutoscale(float& x0, float& y0, float& x1, float& y1) const {
         for (auto j : drawJobs)
             j.updateAutoscale(x0, x1, y0, y1);
     }

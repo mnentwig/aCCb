@@ -1,9 +1,9 @@
 #include <cassert>
 #include <cmath>  // abs
+#include <sstream>
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include <sstream>
 using std::vector, std::unordered_set, std::string;
 //* decides where to place the axis tics, formats the text labels */
 class axisTics {
@@ -44,8 +44,13 @@ class axisTics {
         vector<double> r;
         while (gridVal <= endVal + ticDelta / 2.0) {
             // note: don't make the interval wider, otherwise an axis looks like a tic when it's not.
-            if (isInRange(startVal - 0.001 * ticDelta, endVal + 0.001 * ticDelta, gridVal))
-                r.push_back(gridVal);
+            if (isInRange(startVal - 0.001 * ticDelta, endVal + 0.001 * ticDelta, gridVal)) {
+                // add gridVal as a tic division
+                if ((std::fabs(gridVal) < 1e-16) && (std::fabs(ticDelta) > 1e-14))
+                    r.push_back(0);  // cull numerical error around 0
+                else
+                    r.push_back(gridVal);
+            }
             gridVal += ticDelta;
         }
         return r;

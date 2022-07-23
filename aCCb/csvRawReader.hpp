@@ -117,4 +117,44 @@ class csvRawReader {
     bufReader reader;
     const char sep;
 };  // class csvRawReader
+class csvRawReaderRef {
+   protected:
+    std::ifstream is;
+
+   public:
+    csvRawReaderRef(const std::string& filename, char sep) : sep(sep) {
+        is = std::ifstream(filename, std::ios::binary);
+        if (!is.is_open()) throw std::runtime_error("failed to open file (r)");
+    }
+    vector<std::string> getRow() {
+        vector<std::string> r;
+
+        std::string buf;
+        if (!std::getline(is, buf))
+            return r;
+        size_t posInBuffer = 0;
+        size_t tokenStart = 0;
+
+        while (true) {
+            char c = posInBuffer == buf.size() ? '\n' : buf[posInBuffer];
+            if (c == sep) {
+                r.push_back(std::string(&buf[tokenStart], posInBuffer - tokenStart));
+                tokenStart = posInBuffer + 1;
+            }
+            if (c == '\n') {
+                if ((posInBuffer > tokenStart) && (buf[posInBuffer - 1] == '\r'))
+                    r.push_back(std::string(&buf[tokenStart], posInBuffer - tokenStart - 1));  // skip '\r' before '\n'
+                else
+                    r.push_back(std::string(&buf[tokenStart], posInBuffer - tokenStart));
+                tokenStart = posInBuffer + 1;
+                break;
+            }
+            ++posInBuffer;
+        }
+        return r;
+    }
+
+   protected:
+    const char sep;
+};  // class csvRawReader
 }  // namespace aCCb

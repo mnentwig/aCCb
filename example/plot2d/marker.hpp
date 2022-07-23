@@ -6,7 +6,7 @@
 using std::string, std::vector;
 class marker_cl {
    public:
-    marker_cl(const string sequence, uint32_t rgba, int id) : rgba(rgba), id(id) {
+    marker_cl(const string sequence, uint32_t rgba) : rgba(rgba) {
         int charCount = sequence.size();
         int markerSize1d = std::sqrt(charCount);
 
@@ -28,5 +28,4 @@ class marker_cl {
     int dyPlus;
     vector<int> seq;
     uint32_t rgba;
-    int id;
 };
