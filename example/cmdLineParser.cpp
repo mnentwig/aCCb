@@ -1,12 +1,13 @@
-// =============================================
-// === code snippet for command line parsing ===
-// =============================================
+// =======================================================================
+// === code snippet for simple command line parsing (non-hierarchical) ===
+// ========================================================================
 #include <cassert>
 #include <iostream>
 #include <regex>
 #include <string>
 #include <type_traits>
 #include <vector>
+#include "../aCCb/stringToNum.hpp"
 using std::cerr, std::cout, std::endl, std::regex, std::string, std::vector;
 class cmdLineArgs {
    public:
@@ -61,39 +62,8 @@ class cmdLineArgs {
         if (!std::regex_match(line, this->m, regex(argname + "=(.+)")))
             return false;
         assert(m.size() == 2);  // complete expression, capture
-        if (!str2num(this->m[1], /*out*/ result))
+        if (!aCCb::str2num(this->m[1], /*out*/ result))
             usage(line + ": failed to convert '" + string(this->m[1]) + "'");
-        return true;
-    }
-
-    //** safe conversion of string to number */
-    template <typename T>
-    static inline bool str2num(const string& str, T& val) {
-        char* endptr = NULL;
-        errno = 0;
-        T valB;  // temporary result: Update output parameter only on success
-        if constexpr (std::is_unsigned_v<T> && std::is_integral_v<T>) {
-            unsigned long long v = strtoull(str.c_str(), &endptr, /*base*/ 10);
-            valB = v;
-            if ((unsigned long long)valB != v)
-                return false;  // out of range
-        } else if constexpr (std::is_signed_v<T> && std::is_integral_v<T>) {
-            long long v = strtoll(str.c_str(), &endptr, /*base*/ 10);
-            valB = v;
-            if ((long long)valB != v)
-                return false;  // out of range
-        } else if constexpr (std::is_floating_point_v<T> && (sizeof(T) == 4)) {
-            valB = strtof(str.c_str(), &endptr);
-        } else if constexpr (std::is_floating_point_v<T> && (sizeof(T) == 8)) {
-            valB = strtod(str.c_str(), &endptr);
-        } else
-            return false;  // improper use
-        if (errno != 0)
-            return false;  // conversion error;
-        while (*endptr)
-            if (!std::isspace(*endptr++))
-                return false;
-        val = valB;
         return true;
     }
 

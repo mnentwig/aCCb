@@ -125,6 +125,15 @@ template<class T> void vec2stream(std::ostream &os, const vector<T> &vec, const 
 	}
 }
 
+//* txtfile2vec: Read binary data from file into vector */
+template<class T> vector<T> file2vec(const string fname) {
+	xxxstd::ifstream is(fname, std::ifstream::binary);
+	if (!is)
+		throw runtime_error("failed to open file");
+	return binIo::stream2vec<T>(is);
+}
+
+
 // === wrappers with filename argument ===
 
 //* file2vec: Read binary data from file into vector */

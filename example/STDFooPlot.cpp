@@ -1,11 +1,13 @@
 #include <../aCppCookbook/aCCb/binIo.hpp>
 #include <../aCppCookbook/aCCb/plot2d.hpp>
+#include <../aCppCookbook/aCCb/stringUtil.hpp>
 #include <../aCppCookbook/aCCb/vectorText.hpp>
 #include <../aCppCookbook/aCCb/widget.hpp>
 
 //#include <../aCppCookbook/aCCb/stringToNum.hpp>
 #include <cassert>
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -83,7 +85,7 @@ class argObj {
    public:
     argObj(string token) : token(token), state(""), stack(), closed(false) {}
 
-    virtual bool acceptArg_stateSet(const string &/*arg*/) {
+    virtual bool acceptArg_stateSet(const string & /*arg*/) {
         throw runtime_error("?? " + token + ":state implementation is missing for '" + state + "' state ??");
     }
     virtual bool acceptArg_stateUnset(const string &arg) {
@@ -241,8 +243,13 @@ class traceDataMan_cl {
         // todo: make filename canonical
         if (dataByFilename.find(filename) != dataByFilename.end())
             return;
-        // todo: support multiple filetypes
-        dataByFilename[filename] = aCCb::binaryIo::file2vec<float>(filename);
+        string ext = std::filesystem::path(filename).extension().string();
+        if (aCCb::caseInsensitiveStringCompare(".float", ext))
+            dataByFilename[filename] = aCCb::binaryIo::file2vec<float>(filename);
+        else if (aCCb::caseInsensitiveStringCompare(".txt", ext))
+            dataByFilename[filename] = aCCb::binaryIo::txtfile2vec<float>(filename);
+        else
+            throw runtime_error("unsupported data file extension");
     }
 
     vector<float> *getData(const string &filename) {
