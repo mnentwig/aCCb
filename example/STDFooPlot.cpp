@@ -235,17 +235,29 @@ class loader : public argObj {
             xlabel = a;
         } else if (state == "-ylabel") {
             ylabel = a;
+        } else if (state == "-xLimLow") {
+            if (!aCCb::str2num(a, xLimLow)) usage("-xLimLow: failed to parse number ('" + a + "')");
+        } else if (state == "-xLimHigh") {
+            if (!aCCb::str2num(a, xLimHigh)) usage("-xLimHigh: failed to parse number ('" + a + "')");
+        } else if (state == "yxLimLow") {
+            if (!aCCb::str2num(a, yLimLow)) usage("-yLimLow: failed to parse number ('" + a + "')");
+        } else if (state == "yxLimHigh") {
+            if (!aCCb::str2num(a, yLimHigh)) usage("-yLimHigh: failed to parse number ('" + a + "')");
         } else
             return argObj::acceptArg_stateSet(a);
         state = "";
         return true;
     }
 
-    const vector<string> stateArgs{"-title", "-xlabel", "-ylabel"};
+    const vector<string> stateArgs{"-title", "-xlabel", "-ylabel", "-xLimLow", "-xLimHigh", "-yLimLow", "-yLimHigh"};
     const vector<string> switchArgs{"-trace"};
     string title;
     string xlabel;
     string ylabel;
+    double xLimLow = std::numeric_limits<double>::quiet_NaN();
+    double xLimHigh = std::numeric_limits<double>::quiet_NaN();
+    double yLimLow = std::numeric_limits<double>::quiet_NaN();
+    double yLimHigh = std::numeric_limits<double>::quiet_NaN();
     vector<trace> traces;
 };
 
@@ -392,7 +404,7 @@ int main2(int argc, const char **argv) {
                          "-trace", "-dataY", "out2.float", "-marker", "g.3",
                          "-trace", "-dataY", "y.txt", "-dataX", "x.txt", "-marker", "wx1", /*"-vertLineY", "-1", "-vertLineY", "1",*/
                          "-trace", "-vertLineX", "-3", "-vertLineX", "3", "-horLineY", "-3", "-horLineY", "3", "-marker", "o.1",
-                         "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel"};
+                         "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel", "-xLimLow", "-200000"};
     argv = tmp;
     argc = sizeof(tmp) / sizeof(tmp[0]);
 
@@ -404,11 +416,12 @@ int main2(int argc, const char **argv) {
     // === parse command line args ===
     for (int ixArg = 1; ixArg < argc; ++ixArg) {
         string a = argv[ixArg];
+        cout << "parsing " << a << endl;
         if (!l.acceptArg(a))
             l.usage("unexpected argument '" + a + "'");
     }
     l.close();
-
+cout << "closed" << endl;
     //* GUI drawing code */
     myTestWin w;
 
@@ -425,7 +438,21 @@ int main2(int argc, const char **argv) {
             l.usage("invalid marker description '" + t.marker + "'. Valid example: g.1");
         w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), m, t.vertLineX, t.horLineY);
     }
-    w.tb->autoscale();
+
+    // === autoscale ===
+    if (std::isnan(l.xLimLow) | std::isnan(l.xLimHigh) | std::isnan(l.yLimLow) | std::isnan(l.yLimHigh))
+        w.tb->autoscale();
+
+    // === set fixed range ===
+    if (!std::isnan(l.xLimLow))
+        w.tb->x0 = l.xLimLow;
+    if (!std::isnan(l.xLimHigh))
+        w.tb->x1 = l.xLimHigh;
+    if (!std::isnan(l.yLimLow))
+        w.tb->y0 = l.yLimLow;
+    if (!std::isnan(l.yLimHigh))
+        w.tb->y1 = l.yLimHigh;
+
     w.tb->setTitle(l.title);
     w.tb->setXlabel(l.xlabel);
     w.tb->setYlabel(l.ylabel);

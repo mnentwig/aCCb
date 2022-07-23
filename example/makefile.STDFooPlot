@@ -1,0 +1,4 @@
+ all: STDFooPlot.exe
+ STDFooPlot.exe:
+	 g++ -O3 -DNDEBUG -o STDFooPlot.exe -mwindows -I. -I../../fltk-1.3.8 -static -O STDFooPlot.cpp ../../fltk-1.3.8/lib/libfltk.a -lole32 -luuid -lcomctl32
+.PHONY: STDFooPlot.exe

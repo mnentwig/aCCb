@@ -146,7 +146,7 @@ class plot2d : public Fl_Box {
 
             int d = mouseState.getMouseWheel();
             if (d != 0) {
-                double scale = 1.2;
+                double scale = 1.3;
                 if (d < 0)
                     scale = 1 / scale;
                 double x0, y0, x1, y1;
@@ -279,6 +279,12 @@ class plot2d : public Fl_Box {
         x1 = x1f;
         y1 = y1f;
     }
+
+    /** visible area */
+    double x0 = -1;
+    double x1 = 2;
+    double y0 = 1.23;
+    double y1 = 1.24;
 
    protected:
     void drawAxes(const proj<double> p) {
@@ -453,12 +459,6 @@ class plot2d : public Fl_Box {
     float axisLabelFontsize = fontsize;
     const int minorTicLength = 3;
     const int majorTicLength = 7;
-
-    /** visible area */
-    double x0 = -1;
-    double x1 = 2;
-    double y0 = 1.23;
-    double y1 = 1.24;
 
     //* if false, use cached bitmap. Otherwise redraw from data. */
     bool needFullRedraw = true;
