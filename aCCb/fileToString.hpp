@@ -1,5 +1,6 @@
 #pragma once
 #include <fstream> // ifstream
+#include <sstream> // ifstream
 #include <string>
 namespace aCCb {
 static std::string fileToString(const std::string filename) {

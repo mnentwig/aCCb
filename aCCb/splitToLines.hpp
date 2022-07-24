@@ -11,7 +11,7 @@ using std::string;
 #pragma GCC diagnostic ignored "-Wunused-function"
 static vector<string> splitToLines_STL(const string contents) {
 	vector<string> retval;
-	const regex rSplit(R"((.*)\u000D?\u000A)"); //
+	const std::regex rSplit(R"((.*)\u000D?\u000A)"); //
 	std::smatch m;
 	string::const_iterator searchStart(contents.cbegin());
 	string::const_iterator searchEnd(contents.cend());
