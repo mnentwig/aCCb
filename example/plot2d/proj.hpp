@@ -28,6 +28,8 @@ class proj {
           mYData2screen((screenY1 - screenY0) / (dataY1 - dataY0)),
           bYData2screen(screenY0 - dataY0 * (screenY1 - screenY0) / (dataY1 - dataY0)),
           bYData2screenPlus0p5(bYData2screen + (T)0.5) {}
+
+    proj() {} 
     //** projects data to screen */
     inline int projX(T x) const {
         return x * mXData2screen + bXData2screenPlus0p5;
@@ -60,6 +62,9 @@ class proj {
     }
     inline int getScreenY0() const {
         return screenY0;
+    }
+    inline int getScreenX1() const {
+        return screenX1;
     }
     inline int getScreenY1() const {
         return screenY1;

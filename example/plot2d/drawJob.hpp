@@ -195,6 +195,55 @@ class drawJob {
         }
     }
 
+    bool findClosestPoint(int xScreen, int yScreen, const proj<float>& p, size_t& ixPt, int& bestDist) const {
+        bool r = false;
+        if (bestDist == 0)
+            return r;  // can't do any better
+        if (pDataY) {
+            const size_t nPts = pDataY->size();
+            if (pDataX) {
+                for (size_t ix = 0; ix < nPts; ++ix) {
+                    float xData = (*pDataX)[ix];
+                    float yData = (*pDataY)[ix];
+                    if (xData < p.getDataX0() || (xData > p.getDataX1()) || (yData < p.getDataY0()) || (yData > p.getDataY1()))
+                        continue;
+                    int xDataP = p.projX(xData);
+                    int yDataP = p.projY(yData);
+                    int dist = (xDataP - xScreen) * (xDataP - xScreen) + (yDataP - yScreen) * (yDataP - yScreen);
+                    if (dist < bestDist) {
+                        ixPt = ix;
+                        bestDist = dist;
+                        r = true;
+                    }
+                }
+            } else {
+                for (size_t ix = 0; ix < nPts; ++ix) {
+                    float xData = (float)(ix + 1);
+                    float yData = (*pDataY)[ix];
+                    if (xData < p.getDataX0() || (xData > p.getDataX1()) || (yData < p.getDataY0()) || (yData > p.getDataY1()))
+                        continue;
+                    int xDataP = p.projX(xData);
+                    int yDataP = p.projY(yData);
+                    int dist = (xDataP - xScreen) * (xDataP - xScreen) + (yDataP - yScreen) * (yDataP - yScreen);
+                    if (dist < bestDist) {
+                        ixPt = ix;
+                        bestDist = dist;
+                        r = true;
+                    }
+                }
+            }
+        }
+        return r;
+    }
+
+    void getPt(size_t ixPt, float& x, float& y) {
+        if (pDataX != NULL)
+            x = (*pDataX)[ixPt];
+        else
+            x = ixPt + 1;
+        y = (*pDataY)[ixPt];
+    }
+
     const marker_cl* marker;
 
    protected:
@@ -202,6 +251,15 @@ class drawJob {
     const vector<float>* pDataY;
     vector<float> vertLineX;
     vector<float> horLineY;
+
+    // determines pixel distance squared between xData/yData (data coordinates) and xScreen/yScreen (screen coordinates)
+    static int projectedDeltaSquare(const proj<float>& p, float xData, float yData, int xScreen, int yScreen) {
+        if (xData < p.getScreenX0() || (xData > p.getScreenX1()) || (yData < p.getScreenY0()) || (yData > p.getScreenY1()))
+            return std::numeric_limits<int>::max();
+        int xDataP = p.projX(xData);
+        int yDataP = p.projY(yData);
+        return (xDataP - xScreen) * (xDataP - xScreen) + (yDataP - yScreen) * (yDataP - yScreen);
+    }
 };  // class drawJob
 
 class allDrawJobs_cl {
@@ -255,7 +313,26 @@ class allDrawJobs_cl {
             j.updateAutoscale(x0, x1, y0, y1);
     }
 
+    // attempts to locate the on-screen data point closest to xData/yData. Returns true if successful, with trace in ixTrace, point in ixPt.
+    bool findClosestPoint(float xData, float yData, const proj<float>& p, size_t& ixTrace, size_t& ixPt) const {
+        bool r = false;
+        int bestDist = std::numeric_limits<int>::max();
+        float xScreen = p.projX(xData);
+        float yScreen = p.projY(yData);
+        for (size_t ixT = 0; ixT < drawJobs.size(); ++ixT)
+            if (drawJobs[ixT].findClosestPoint(xScreen, yScreen, p, ixPt, bestDist)) {
+                r = true;
+                ixTrace = ixT;
+                if (bestDist == 0)
+                    break;  // bull's eye
+            }
+        return r;
+    }
+
+    void getPt(size_t ixTrace, size_t ixPt, float& x, float& y) {
+        drawJobs[ixTrace].getPt(ixPt, x, y);
+    }
+
    protected:
-    vector<drawJob>
-        drawJobs;
+    vector<drawJob> drawJobs;
 };

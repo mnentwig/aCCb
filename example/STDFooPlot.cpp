@@ -98,6 +98,11 @@ class myTestWin {
         window->hide();
     }
 
+    void shutdown() {
+        Fl::remove_timeout(timer_cb);
+        tb->shutdown();
+    }
+
     static void cb_closeWrapper(Fl_Widget *w, void *userdata) {
         myTestWin *this_ = (myTestWin *)userdata;
         this_->cb_close();
@@ -105,6 +110,7 @@ class myTestWin {
 
     static void timer_cb(void *userdata) {
         myTestWin *this_ = (myTestWin *)userdata;
+        this_->tb->timer_cb();
         if (this_->syncfile.isModified()) {
             this_->window->hide();  // all windows are hidden => Fl::run() returns
         } else
@@ -159,7 +165,9 @@ class trace : public aCCb::argObj {
             float v;
             if (!aCCb::str2num(a, v)) throw aoException(state + ": failed to parse number ('" + a + "')");
             vertLineX.push_back(v);
-        } else
+        } else if (state == "-annotate")
+            annotate = a;
+        else
             throw runtime_error("state implementation missing: " + state);
         state = "";
         return true;
@@ -170,6 +178,7 @@ class trace : public aCCb::argObj {
     string marker;
     vector<float> horLineY;
     vector<float> vertLineX;
+    string annotate;
 
    protected:
     const vector<string> stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX"};
@@ -268,7 +277,29 @@ class traceDataMan_cl {
             throw aCCb::argObjException("unsupported data file extension (" + filename + ")");
     }
 
-    vector<float> *getData(const string &filename) {
+    void loadAnnotations(const string &filename) {
+        if (filename == "")
+            return;
+
+        vector<string> r;
+        std::ifstream is(filename);
+        if (!is.is_open()) throw runtime_error("failed to open file (r): '" + filename + "')");
+        string line;
+        while (std::getline(is, line))
+            r.push_back(line);
+        annotationsByFilename[filename] = r;
+    }
+
+    const vector<string> *getAnnotations(const string &filename) const {
+        if (filename == "")
+            return NULL;
+        auto it = annotationsByFilename.find(filename);
+        if (it == annotationsByFilename.end())
+            throw runtime_error("datafile should have been loaded but does not exist");
+        return &(it->second);
+    }
+
+    const vector<float> *getData(const string &filename) {
         if (filename == "")
             return NULL;
         auto it = dataByFilename.find(filename);
@@ -279,6 +310,7 @@ class traceDataMan_cl {
 
    protected:
     map<string, vector<float>> dataByFilename;
+    map<string, vector<string>> annotationsByFilename;
 };
 
 class markerMan_cl {
@@ -412,6 +444,7 @@ void usage() {
     cerr << "   -vertLineY (number) repeated use is allowed" << endl;
     cerr << "   -horLineX (number) repeated use is allowed" << endl;
     cerr << "   -marker (e.g. w.1 see [1])" << endl;
+    cerr << "   -annotate (filename)" << endl;
     cerr << "-xlabel (text)" << endl;
     cerr << "-ylabel (text)" << endl;
     cerr << "-title (text)" << endl;
@@ -469,6 +502,7 @@ int main2(int argc, const char **argv) {
     for (auto t : l.traces) {
         traceDataMan.loadData(t.dataX);
         traceDataMan.loadData(t.dataY);
+        traceDataMan.loadAnnotations(t.annotate);
         const marker_cl *m = markerMan.getMarker(t.marker);
         if (m == NULL)
             throw aCCb::argObjException("invalid marker description '" + t.marker + "'. Valid example: g.1");
@@ -494,6 +528,7 @@ int main2(int argc, const char **argv) {
     w.tb->setYlabel(l.ylabel);
     w.show();
     Fl::run();
+    w.shutdown();
     return 0;
 }
 

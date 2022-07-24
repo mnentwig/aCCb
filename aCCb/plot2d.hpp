@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "plot2d/annotator.hpp"
 #include "plot2d/axisTics.hpp"
 #include "plot2d/drawJob.hpp"
 #include "plot2d/marker.hpp"
@@ -99,6 +100,18 @@ class plot2d : public Fl_Box {
             int mouseWheel;
         } mouseState;
         int handle(int event) {
+            switch (event) {
+                case FL_ENTER:
+                    return 1;  // must ack to receive mouse events
+                case FL_PUSH:
+                case FL_RELEASE:
+                case FL_MOUSEWHEEL:
+                case FL_DRAG:
+                case FL_MOVE:
+                    break;
+                default:
+                    return 0;
+            }
             proj<double> p = parent->projDataToScreen<double>();
             mouseState.update(event);
             int mouseX = mouseState.getMouseX();
@@ -122,6 +135,7 @@ class plot2d : public Fl_Box {
                     parent->setViewArea(/*x0*/ std::min(mouseDown3DataX, dataX), /*y0*/ std::min(mouseDown3DataY, dataY), /*x1*/ std::max(mouseDown3DataX, dataX), /*y1*/ std::max(mouseDown3DataY, dataY));
 
             if (mouseState.getMouseMove()) {
+                parent->notifyCursorMove(dataX, dataY);
                 if (mouseState.getState(FL_BUTTON1)) {
                     double dx = dataX - mouseDown1DataX;
                     double dy = dataY - mouseDown1DataY;
@@ -167,6 +181,7 @@ class plot2d : public Fl_Box {
             }
             return 1;
         }
+
         bool drawRect(double& x0, double& y0, double& x1, double& y1) {
             if (mouseState.getState(FL_BUTTON3)) {
                 x0 = drawRectx0;
@@ -243,8 +258,11 @@ class plot2d : public Fl_Box {
 
    public:
     plot2d(int x, int y, int w, int h, const char* l = 0)
-        : Fl_Box(x, y, w, h, l), evtMan(this) {}
+        : Fl_Box(x, y, w, h, l), evtMan(this), allDrawJobs(), annotator(this->allDrawJobs) {}
     ~plot2d() {}
+    void shutdown() {
+        annotator.shutdown();
+    }
 
     void setTitle(const string& v) {
         title = v;
@@ -278,6 +296,20 @@ class plot2d : public Fl_Box {
         y0 = y0f;
         x1 = x1f;
         y1 = y1f;
+    }
+
+    // get regular callbacks for non-blocking background work
+    void timer_cb() {
+        size_t ixTr;
+        size_t ixPt;
+        if (annotator.getHighlightedPoint(ixTr, ixPt)) {
+            if ((highlightIxPt != ixPt) || (highlightIxTrace != ixTr) || (!highlightValid)) {
+                highlightIxPt = ixPt;
+                highlightIxTrace = ixTr;
+                highlightValid = true;
+                redraw();  // redraw only when changed
+            }
+        }
     }
 
     /** visible area */
@@ -450,15 +482,38 @@ class plot2d : public Fl_Box {
             int ys1 = pd.projY(yr1);
             fl_rect(std::min(xs0, xs1), std::min(ys0, ys1), std::abs(xs1 - xs0), std::abs(ys1 - ys0));
         }
+
+        if (highlightValid) {
+            float x, y;
+            allDrawJobs.getPt(highlightIxTrace, highlightIxPt, x, y);
+            int xs = pd.projX(x);
+            int ys = pd.projY(y);
+            const int d = 10;
+            fl_color(FL_RED);
+            fl_line(xs - d, ys - d, xs + d, ys + d);
+            fl_color(FL_BLUE);
+            fl_line(xs - d, ys + d, xs + d, ys - d);
+        }
+    }
+
+    // event manager calls this for cursor, annotation search update
+    void notifyCursorMove(double dataX, double dataY) {
+        proj<float> p = projDataToScreen<float>();
+        annotator.notifyCursorChange(dataX, dataY, p);
     }
 
     allDrawJobs_cl allDrawJobs;
+    annotator_t annotator;
 
     float fontsize = 14;
     float titleFontsize = 18;
     float axisLabelFontsize = fontsize;
     const int minorTicLength = 3;
     const int majorTicLength = 7;
+
+    size_t highlightIxTrace;
+    size_t highlightIxPt;
+    bool highlightValid = false;
 
     //* if false, use cached bitmap. Otherwise redraw from data. */
     bool needFullRedraw = true;
