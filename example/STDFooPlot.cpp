@@ -1,16 +1,8 @@
-#include <cassert>
-#include <cmath>
-#include <deque>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
-#include <map>
 #include <regex>
-#include <set>
-#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #include "../aCCb/binIo.hpp"
@@ -30,6 +22,7 @@ using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_e
 #include <stdio.h>
 #include <stdlib.h>
 
+#if 0
 class myMenu : public aCCbWidget {
    public:
     myMenu(int x, int y, int w, int h) : aCCbWidget(x, y, w, h) {
@@ -63,10 +56,10 @@ class myMenu : public aCCbWidget {
     Fl_Input *i2;
     Fl_Float_Input *fi;
 };
-
+#endif
 class myTestWin {
    public:
-    myTestWin(loader &l, allDrawJobs_cl &adr) : syncfile(l.syncfile), persistfile(l.persistfile) {
+    myTestWin(fooplotCmdLineArgRoot &l, allDrawJobs_cl &adr) : syncfile(l.syncfile), persistfile(l.persistfile) {
         // === main window ===
         int areaW, areaH;
         if ((l.windowX > 0) && (l.windowY > 0) && (l.windowW > 0) && (l.windowH > 0)) {
@@ -136,7 +129,7 @@ class myTestWin {
         if (syncfile.isModified())
             cb_close();  // all windows are hidden => Fl::run() returns
         else
-            Fl::repeat_timeout(0.1, cb_timerWrapper, (void *)this);
+            Fl::repeat_timeout(0.02, cb_timerWrapper, (void *)this);
 
         if (persistfile != "") {
             std::ofstream s(persistfile);
@@ -221,7 +214,7 @@ int main2(int argc, const char **argv) {
     Fl::visual(FL_RGB);
 
     //* collects command line arguments */
-    loader l;
+    fooplotCmdLineArgRoot l;
 
     // === parse command line args ===
     for (int ixArg = 1; ixArg < argc; ++ixArg) {
@@ -285,7 +278,7 @@ int main2(int argc, const char **argv) {
 }
 
 // Ctrl-C callback
-void sigIntHandler(int s) {
+void sigIntHandler(int /*signal*/) {
     std::cout << "sig INT detected, shutting down" << endl;
     if (windowForSigIntHandler)
         windowForSigIntHandler->cb_close();  // same as regular close

@@ -63,9 +63,9 @@ class trace : public aCCb::argObj {
 // ==============================================================================
 // command line parser: root level
 // ==============================================================================
-class loader : public aCCb::argObj {
+class fooplotCmdLineArgRoot : public aCCb::argObj {
    public:
-    loader() : argObj("cmdline root") {}
+    fooplotCmdLineArgRoot() : argObj("cmdline root") {}
     bool acceptArg_stateUnset(const string &a) {
         if (std::find(switchArgs.cbegin(), switchArgs.cend(), a) != switchArgs.cend()) {
             if (a == "-trace") {
