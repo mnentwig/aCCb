@@ -257,7 +257,7 @@ class loader : public aCCb::argObj {
     string syncfile;
     string persistfile;
     std::deque<trace> traces;
-    bool showUsage;
+    bool showUsage = false;
 };
 
 class traceDataMan_cl {
@@ -400,9 +400,11 @@ class markerMan_cl {
     }
 
     const marker_cl *getMarker(const string &desc) const {
+        cout << "marker search " << desc << endl;
         auto it = markers.find(desc);
         if (it == markers.end())
             return NULL;
+        cout << "marker found " << desc << endl;
         return it->second;
     }
 
@@ -482,6 +484,11 @@ int main2(int argc, const char **argv) {
             throw aCCb::argObjException("unexpected argument '" + a + "'");
     }
 
+    if (l.showUsage) {
+        usage();  // note: -usage, even at the end, is handled before any args processing that could throw an exception
+        exit(/*EXIT_SUCCESS*/ 0);
+    }
+
     // === read and apply "persistent" settings e.g. window position ===
     // those are applied after all command line args have been handled
     // (use model: delete persist file to reset)
@@ -497,38 +504,44 @@ int main2(int argc, const char **argv) {
     //* GUI drawing code */
     myTestWin w(l.syncfile, l.persistfile, l.windowX, l.windowY, l.windowW, l.windowH);
 
-    //* stores all trace data */
-    traceDataMan_cl traceDataMan;
+    try {  // above starts background thread. Need to shut down on exception
 
-    //* provides all markers */
-    markerMan_cl markerMan;
-    for (auto t : l.traces) {
-        traceDataMan.loadData(t.dataX);
-        traceDataMan.loadData(t.dataY);
-        traceDataMan.loadAnnotations(t.annotate);
-        const marker_cl *m = markerMan.getMarker(t.marker);
-        if (m == NULL)
-            throw aCCb::argObjException("invalid marker description '" + t.marker + "'. Valid example: g.1");
-        w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), traceDataMan.getAnnotations(t.annotate), m, t.vertLineX, t.horLineY);
+        //* stores all trace data */
+        traceDataMan_cl traceDataMan;
+
+        //* provides all markers */
+        markerMan_cl markerMan;
+        for (auto t : l.traces) {
+            const marker_cl *m = markerMan.getMarker(t.marker);
+            if (!m)
+                throw aCCb::argObjException("invalid marker description '" + t.marker + "'. Valid example: g.1");
+            traceDataMan.loadData(t.dataX);
+            traceDataMan.loadData(t.dataY);
+            traceDataMan.loadAnnotations(t.annotate);
+            w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), traceDataMan.getAnnotations(t.annotate), m, t.vertLineX, t.horLineY);
+        }
+
+        // === autoscale ===
+        if (std::isnan(l.xLimLow) | std::isnan(l.xLimHigh) | std::isnan(l.yLimLow) | std::isnan(l.yLimHigh))
+            w.tb->autoscale();
+
+        // === set fixed range ===
+        if (!std::isnan(l.xLimLow))
+            w.tb->x0 = l.xLimLow;
+        if (!std::isnan(l.xLimHigh))
+            w.tb->x1 = l.xLimHigh;
+        if (!std::isnan(l.yLimLow))
+            w.tb->y0 = l.yLimLow;
+        if (!std::isnan(l.yLimHigh))
+            w.tb->y1 = l.yLimHigh;
+
+        w.tb->setTitle(l.title);
+        w.tb->setXlabel(l.xlabel);
+        w.tb->setYlabel(l.ylabel);
+    } catch (std::exception &e) {
+        w.shutdown();
+        throw;
     }
-
-    // === autoscale ===
-    if (std::isnan(l.xLimLow) | std::isnan(l.xLimHigh) | std::isnan(l.yLimLow) | std::isnan(l.yLimHigh))
-        w.tb->autoscale();
-
-    // === set fixed range ===
-    if (!std::isnan(l.xLimLow))
-        w.tb->x0 = l.xLimLow;
-    if (!std::isnan(l.xLimHigh))
-        w.tb->x1 = l.xLimHigh;
-    if (!std::isnan(l.yLimLow))
-        w.tb->y0 = l.yLimLow;
-    if (!std::isnan(l.yLimHigh))
-        w.tb->y1 = l.yLimHigh;
-
-    w.tb->setTitle(l.title);
-    w.tb->setXlabel(l.xlabel);
-    w.tb->setYlabel(l.ylabel);
     w.show();
     Fl::run();
     w.shutdown();
@@ -543,8 +556,8 @@ int main(int argc, const char **argv) {
         cerr << "use -help for usage information" << endl;
         exit(/*EXIT_FAILURE*/ -1);
     } catch (std::exception &e) {
-        cerr << "unhandled exception (this is a bug): " << e.what() << endl;
-        return 1;
+        cerr << "unhandled exception: " << e.what() << endl;
+        exit(/*EXIT_FAILURE*/ -1);
     }
     return 0;
 }

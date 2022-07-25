@@ -9,14 +9,14 @@ using std::string;
 // ==============================================================================
 
 // exception during command line parsing on incorrect input
-class argObjException : std::exception {
+class argObjException : public std::exception {
    public:
     argObjException(const string &msg) : msg(msg) {}
     const char *what() const noexcept {
         return msg.c_str();
     }
 
-   protected:
+    // protected:
     const string msg;
 };
 
