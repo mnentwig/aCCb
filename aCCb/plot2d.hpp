@@ -277,6 +277,9 @@ class plot2d : public Fl_Box {
     }
 
     void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const std::vector<string>* annot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) {
+        if ((dataX != NULL) && (dataY != NULL))
+            if (dataX->size() != dataY->size())
+                throw std::runtime_error("inconsistent trace data size X/Y");
         allDrawJobs.addTrace(drawJob(dataX, dataY, annot, marker, vertLineX, horLineY));
     }
 
@@ -424,6 +427,8 @@ class plot2d : public Fl_Box {
     } cachedImage;
 
     void draw() {
+        cout << "draw\n"
+             << endl;
         this->Fl_Box::draw();
 
         proj<double> p = projDataToScreen<double>();
@@ -499,6 +504,7 @@ class plot2d : public Fl_Box {
             fl_color(FL_BLUE);
             fl_line(xs - d, ys + d, xs + d, ys - d);
         }
+        cout << "draw done" << endl;
     }
 
     // event manager calls this for cursor, annotation search update

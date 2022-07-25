@@ -459,6 +459,7 @@ void usage() {
 }
 
 int main2(int argc, const char **argv) {
+#if 0
     const char *tmp[] = {"execname",
                          "-trace", "-dataY", "out2.float", "-marker", "g.3",
                          "-trace", "-dataY", "y.txt", "-dataX", "x.txt", "-marker", "wx1", /*"-vertLineY", "-1", "-vertLineY", "1",*/ "-annot", "x.txt",
@@ -466,6 +467,10 @@ int main2(int argc, const char **argv) {
                          "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel", "-xLimLow", "-200000", "-sync", "b.txt",
                          // "-windowX", "10", "-windowY", "20", "-windowW", "1800", "-windowH", "1000",
                          "-persist", "c.txt"};
+#else
+    const char *tmp[] = {"execname",
+                         "-trace", "-marker", "g.3", "-dataX", "x.txt", "-dataY", "y.txt", "-sync", "b.txt", "-persist", "c.txt"};
+#endif
     if (argc < 2) {
         cout << "*** debug cmd line args ***" << endl;
         argv = tmp;
@@ -504,13 +509,14 @@ int main2(int argc, const char **argv) {
     //* GUI drawing code */
     myTestWin w(l.syncfile, l.persistfile, l.windowX, l.windowY, l.windowW, l.windowH);
 
+    //* stores all trace data */
+    traceDataMan_cl traceDataMan;
+
+    //* provides all markers */
+    markerMan_cl markerMan;
+
     try {  // above starts background thread. Need to shut down on exception
 
-        //* stores all trace data */
-        traceDataMan_cl traceDataMan;
-
-        //* provides all markers */
-        markerMan_cl markerMan;
         for (auto t : l.traces) {
             const marker_cl *m = markerMan.getMarker(t.marker);
             if (!m)
