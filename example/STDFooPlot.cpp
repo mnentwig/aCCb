@@ -78,6 +78,7 @@ class myTestWin {
 
         window->color(FL_BLACK);
         tb = new aCCb::plot2d(0, 0, areaW, areaH);
+        tb->setTitleUpdateWindow(window);
         // this->menu = new myMenu(800, 0, 400, 200);
         // menu->box(Fl_Boxtype::FL_BORDER_FRAME);
         // menu->color(FL_GREEN);
@@ -165,7 +166,7 @@ class trace : public aCCb::argObj {
             float v;
             if (!aCCb::str2num(a, v)) throw aoException(state + ": failed to parse number ('" + a + "')");
             vertLineX.push_back(v);
-        } else if (state == "-annotate")
+        } else if (state == "-annot")
             annotate = a;
         else
             throw runtime_error("state implementation missing: " + state);
@@ -181,7 +182,7 @@ class trace : public aCCb::argObj {
     string annotate;
 
    protected:
-    const vector<string> stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX"};
+    const vector<string> stateArgs{"-dataX", "-dataY", "-marker", "-horLineY", "-vertLineX", "-annot"};
     const vector<string> switchArgs;
 };
 
@@ -444,7 +445,7 @@ void usage() {
     cerr << "   -vertLineY (number) repeated use is allowed" << endl;
     cerr << "   -horLineX (number) repeated use is allowed" << endl;
     cerr << "   -marker (e.g. w.1 see [1])" << endl;
-    cerr << "   -annotate (filename)" << endl;
+    cerr << "   -annot (filename)" << endl;
     cerr << "-xlabel (text)" << endl;
     cerr << "-ylabel (text)" << endl;
     cerr << "-title (text)" << endl;
@@ -458,14 +459,16 @@ void usage() {
 int main2(int argc, const char **argv) {
     const char *tmp[] = {"execname",
                          "-trace", "-dataY", "out2.float", "-marker", "g.3",
-                         "-trace", "-dataY", "y.txt", "-dataX", "x.txt", "-marker", "wx1", /*"-vertLineY", "-1", "-vertLineY", "1",*/
+                         "-trace", "-dataY", "y.txt", "-dataX", "x.txt", "-marker", "wx1", /*"-vertLineY", "-1", "-vertLineY", "1",*/ "-annot", "x.txt",
                          "-trace", "-vertLineX", "-3", "-vertLineX", "3", "-horLineY", "-3", "-horLineY", "3", "-marker", "o.1",
                          "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel", "-xLimLow", "-200000", "-sync", "b.txt",
                          // "-windowX", "10", "-windowY", "20", "-windowW", "1800", "-windowH", "1000",
                          "-persist", "c.txt"};
-    argv = tmp;
-    argc = sizeof(tmp) / sizeof(tmp[0]);
-
+    if (argc < 2) {
+        cout << "*** debug cmd line args ***" << endl;
+        argv = tmp;
+        argc = sizeof(tmp) / sizeof(tmp[0]);
+    }
     Fl::visual(FL_RGB);
 
     //* collects command line arguments */
@@ -506,7 +509,7 @@ int main2(int argc, const char **argv) {
         const marker_cl *m = markerMan.getMarker(t.marker);
         if (m == NULL)
             throw aCCb::argObjException("invalid marker description '" + t.marker + "'. Valid example: g.1");
-        w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), m, t.vertLineX, t.horLineY);
+        w.tb->addTrace(traceDataMan.getData(t.dataX), traceDataMan.getData(t.dataY), traceDataMan.getAnnotations(t.annotate), m, t.vertLineX, t.horLineY);
     }
 
     // === autoscale ===

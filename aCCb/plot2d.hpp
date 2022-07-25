@@ -276,8 +276,8 @@ class plot2d : public Fl_Box {
         ylabel = v;
     }
 
-    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) {
-        allDrawJobs.addTrace(drawJob(dataX, dataY, marker, vertLineX, horLineY));
+    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const std::vector<string>* annot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) {
+        allDrawJobs.addTrace(drawJob(dataX, dataY, annot, marker, vertLineX, horLineY));
     }
 
     void autoscale() {
@@ -307,9 +307,14 @@ class plot2d : public Fl_Box {
                 highlightIxPt = ixPt;
                 highlightIxTrace = ixTr;
                 highlightValid = true;
-                redraw();  // redraw only when changed
+                redraw();                                 // redraw only when changed
+                updateCursorHighlightAnnotationStatus();  // second update on highlighted parts result
             }
         }
+    }
+
+    void setTitleUpdateWindow(Fl_Window* w) {
+        titleUpdateWindow = w;
     }
 
     /** visible area */
@@ -500,8 +505,25 @@ class plot2d : public Fl_Box {
     void notifyCursorMove(double dataX, double dataY) {
         proj<float> p = projDataToScreen<float>();
         annotator.notifyCursorChange(dataX, dataY, p);
+        cursorX = dataX;
+        cursorY = dataY;
+        updateCursorHighlightAnnotationStatus();  // first update on cursor move
     }
 
+    void updateCursorHighlightAnnotationStatus() {
+        if (!titleUpdateWindow) return;
+        std::stringstream ss;
+        ss << "cur:[" << cursorX << ", " << cursorY << "]";
+        if (highlightValid) {
+            float x, y;
+            allDrawJobs.getPt(highlightIxTrace, highlightIxPt, x, y);
+            ss << " pt:[" << x << ", " << y << "] ";
+            string a;
+            if (allDrawJobs.getAnnotation(highlightIxTrace, highlightIxPt, /*out*/ a))
+                ss << " '" << a << "' ";
+        }
+        titleUpdateWindow->label(ss.str().c_str());
+    }
     allDrawJobs_cl allDrawJobs;
     annotator_t annotator;
 
@@ -511,9 +533,12 @@ class plot2d : public Fl_Box {
     const int minorTicLength = 3;
     const int majorTicLength = 7;
 
+    double cursorX = std::numeric_limits<double>::quiet_NaN();
+    double cursorY = std::numeric_limits<double>::quiet_NaN();
     size_t highlightIxTrace;
     size_t highlightIxPt;
     bool highlightValid = false;
+    Fl_Window* titleUpdateWindow = NULL;
 
     //* if false, use cached bitmap. Otherwise redraw from data. */
     bool needFullRedraw = true;

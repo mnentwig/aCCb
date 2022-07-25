@@ -63,7 +63,7 @@ class drawJob {
     }
 
    public:
-    drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) : marker(marker), pDataX(pDataX), pDataY(pDataY), vertLineX(vertLineX), horLineY(horLineY) {}
+    drawJob(const vector<float>* pDataX, const vector<float>* pDataY, const vector<string>* pAnnot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) : marker(marker), pDataX(pDataX), pDataY(pDataY), pAnnot(pAnnot), vertLineX(vertLineX), horLineY(horLineY) {}
 
     void drawToStencil(const proj<float> p, vector<stencil_t>& stencil) {
         // === vertical lines ===
@@ -244,11 +244,21 @@ class drawJob {
         y = (*pDataY)[ixPt];
     }
 
+    bool getAnnotation(size_t ixPt, /*out*/ string& a) {
+        if (pAnnot == NULL) return false;
+        if (ixPt < pAnnot->size()) {
+            a = (*pAnnot)[ixPt];
+            return true;
+        }
+        return false;
+    }
+
     const marker_cl* marker;
 
    protected:
     const vector<float>* pDataX;
     const vector<float>* pDataY;
+    const vector<string>* pAnnot;
     vector<float> vertLineX;
     vector<float> horLineY;
 
@@ -332,7 +342,11 @@ class allDrawJobs_cl {
     void getPt(size_t ixTrace, size_t ixPt, float& x, float& y) {
         drawJobs[ixTrace].getPt(ixPt, x, y);
     }
+    bool getAnnotation(size_t ixTrace, size_t ixPt, /*out*/ string& a) {
+        return drawJobs[ixTrace].getAnnotation(ixPt, a);
+    }
 
    protected:
-    vector<drawJob> drawJobs;
+    vector<drawJob>
+        drawJobs;
 };
