@@ -1,8 +1,8 @@
-#include <string>
+#include <deque>
 #include <filesystem>
 #include <stdexcept>
+#include <string>
 #include <vector>
-#include <deque>
 
 #include "../../aCCb/cmdLineParsing.hpp"
 #include "../../aCCb/stringToNum.hpp"
@@ -67,19 +67,26 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
    public:
     fooplotCmdLineArgRoot() : argObj("cmdline root") {}
     bool acceptArg_stateUnset(const string &a) {
+        // first pass to children (they are younger)
+        if (argObj::acceptArg_stateUnset(a))
+            return true;
+
+        // handle it ourselves
         if (std::find(switchArgs.cbegin(), switchArgs.cend(), a) != switchArgs.cend()) {
+            // tokens without follow-up argument
             if (a == "-trace") {
                 traces.push_back(trace());  // note: container may not invalidate iterators on insertion e.g. DO NOT use vector
                 stack.push_back(&traces.back());
             } else if (a == "-help") {
                 showUsage = true;
             } else
-                throw new runtime_error(token + "unsupported switch '" + a + "'");
+                throw new runtime_error(token + " ?? missing implementation for '" + a + "'");
         } else if (std::find(stateArgs.cbegin(), stateArgs.cend(), a) != stateArgs.cend()) {
+            // tokens with follow-up argument. The next input is handled by acceptArg_stateSet().
             state = a;
         } else
-            return argObj::acceptArg_stateUnset(a);
-        return true;
+            return false;
+        return true; // common for most of the above
     }
 
     bool acceptArg_stateSet(const string &a) {
@@ -110,7 +117,7 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
         } else if (state == "-persist") {
             persistfile = a;
         } else
-            return argObj::acceptArg_stateSet(a);
+            return argObj::acceptArg_stateSet(a);  // throws error
         state = "";
         return true;
     }

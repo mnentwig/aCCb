@@ -194,7 +194,7 @@ void usage() {
 
 static myTestWin *windowForSigIntHandler;
 int main2(int argc, const char **argv) {
-#if 0
+#if 1
     const char *tmp[] = {"execname",
                          "-trace", "-dataY", "out2.float", "-marker", "g.3",
                          "-trace", "-dataY", "y.txt", "-dataX", "x.txt", "-marker", "wx1", /*"-vertLineY", "-1", "-vertLineY", "1",*/ "-annot", "x.txt",
@@ -210,7 +210,11 @@ int main2(int argc, const char **argv) {
         cout << "*** debug cmd line args ***" << endl;
         argv = tmp;
         argc = sizeof(tmp) / sizeof(tmp[0]);
+        for (int ix = 1; ix < argc; ++ix)
+            cout << argv[ix] << " ";
+        cout << endl;
     }
+    
     Fl::visual(FL_RGB);
 
     //* collects command line arguments */
@@ -219,7 +223,7 @@ int main2(int argc, const char **argv) {
     // === parse command line args ===
     for (int ixArg = 1; ixArg < argc; ++ixArg) {
         string a = argv[ixArg];
-        cout << "parsing " << a << endl;
+        //cout << "parsing " << a << endl;
         if (!l.acceptArg(a))
             throw aCCb::argObjException("unexpected argument '" + a + "'");
     }

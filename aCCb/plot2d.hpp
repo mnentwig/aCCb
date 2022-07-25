@@ -187,7 +187,6 @@ class plot2d : public Fl_Box {
         }
 
         int handleKeyDown(int key) {
-            cout << key << endl;
             if (key == 'a') {
                 parent->autoscale();
                 parent->invalidate(/*full redraw*/ true);
@@ -476,12 +475,12 @@ class plot2d : public Fl_Box {
         // === plot ===
         fl_push_clip(screenX, screenY, width, height);
         {
-            auto begin = std::chrono::high_resolution_clock::now();
+            //auto begin = std::chrono::high_resolution_clock::now();
 
             allDrawJobs.draw(p);
-            auto end = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-            cout << "drawJobs:\t" << 1e-6 * (double)duration << " ms" << endl;
+            //auto end = std::chrono::high_resolution_clock::now();
+            //auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            //cout << "drawJobs:\t" << 1e-6 * (double)duration << " ms" << endl;
         }
         fl_pop_clip();
 
