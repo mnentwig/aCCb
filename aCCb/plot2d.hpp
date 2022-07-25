@@ -427,8 +427,6 @@ class plot2d : public Fl_Box {
     } cachedImage;
 
     void draw() {
-        cout << "draw\n"
-             << endl;
         this->Fl_Box::draw();
 
         proj<double> p = projDataToScreen<double>();
@@ -504,7 +502,6 @@ class plot2d : public Fl_Box {
             fl_color(FL_BLUE);
             fl_line(xs - d, ys + d, xs + d, ys - d);
         }
-        cout << "draw done" << endl;
     }
 
     // event manager calls this for cursor, annotation search update
