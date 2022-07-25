@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-#include "plot2d/marker.hpp"
-#include "plot2d/proj.hpp"
+#include "marker.hpp"
+#include "proj.hpp"
 using std::vector, std::string;
 typedef uint8_t stencil_t;  // bool: 32 ms; uint8: 4.5 ms; uint16: 6 ms uint32_t: 9 ms uint64_t: 16 ms
 class drawJob {
@@ -23,7 +23,11 @@ class drawJob {
               pDataX(pDataX),
               pDataY(pDataY),
               p(p),
-              pStencil(pStencil) {}
+              pStencil(pStencil) {
+            if ((pDataX != NULL) && (pDataY != NULL))
+                if (pDataX->size() != pDataY->size())
+                    throw std::runtime_error("inconsistent trace data size X/Y");
+        }
 
         const size_t ixStart;
         const size_t ixEnd;

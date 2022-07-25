@@ -1,7 +1,9 @@
+#pragma once
 #include <cassert>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <iostream>
 namespace aCCb {
 using std::string;
 // ==============================================================================
@@ -54,18 +56,14 @@ class argObj {
         return false;
     }
     void close() {
-        std::cout << token << " closing" << std::endl;
         if (!closed) {
             if (state != "") throw aoException(state + ": expecting argument");
             closed = true;
             while (stack.size() > 0) {
-                std::cout << token << " closing child" << std::endl;
                 stack.back()->close();
-                std::cout << token << " closed child" << std::endl;
                 stack.pop_back();
             }
         }
-        std::cout << token << " closed " << std::endl;
     }
 
     bool acceptArg(const string &arg) {

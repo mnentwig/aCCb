@@ -1,3 +1,4 @@
+#pragma once
 #include <cassert>
 #include <cmath>  // abs
 #include <sstream>

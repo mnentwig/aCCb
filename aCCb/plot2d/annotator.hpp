@@ -4,7 +4,7 @@
 #include <iostream>
 #include <mutex>
 
-#include "../plot2d/drawJob.hpp"
+#include "drawJob.hpp"
 class annotator_t {
    public:
     annotator_t(allDrawJobs_cl& dj) : dj(dj) {

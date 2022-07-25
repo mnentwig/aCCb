@@ -101,6 +101,8 @@ class plot2d : public Fl_Box {
         } mouseState;
         int handle(int event) {
             switch (event) {
+                case FL_FOCUS:    // must ack to receive keypress events
+                case FL_UNFOCUS:  // must ack to receive keypress events
                 case FL_ENTER:
                     return 1;  // must ack to receive mouse events
                 case FL_PUSH:
@@ -109,6 +111,8 @@ class plot2d : public Fl_Box {
                 case FL_DRAG:
                 case FL_MOVE:
                     break;
+                case FL_KEYDOWN:
+                    return handleKeyDown(Fl::event_key());
                 default:
                     return 0;
             }
@@ -180,6 +184,16 @@ class plot2d : public Fl_Box {
                 parent->setViewArea(x0, y0, x1, y1);
             }
             return 1;
+        }
+
+        int handleKeyDown(int key) {
+            cout << key << endl;
+            if (key == 'a') {
+                parent->autoscale();
+                parent->invalidate(/*full redraw*/ true);
+                return true;
+            }
+            return false;
         }
 
         bool drawRect(double& x0, double& y0, double& x1, double& y1) {
@@ -257,8 +271,8 @@ class plot2d : public Fl_Box {
     }
 
    public:
-    plot2d(int x, int y, int w, int h, const char* l = 0)
-        : Fl_Box(x, y, w, h, l), evtMan(this), allDrawJobs(), annotator(this->allDrawJobs) {}
+    plot2d(int x, int y, int w, int h, allDrawJobs_cl& adr)
+        : Fl_Box(x, y, w, h), evtMan(this), allDrawJobs(adr), annotator(adr) {}
     ~plot2d() {}
     void shutdown() {
         annotator.shutdown();
@@ -276,7 +290,7 @@ class plot2d : public Fl_Box {
         ylabel = v;
     }
 
-    void addTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const std::vector<string>* annot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) {
+    void xxxxxxxxxxxxxxxxxxxxxaddTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const std::vector<string>* annot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) {
         if ((dataX != NULL) && (dataY != NULL))
             if (dataX->size() != dataY->size())
                 throw std::runtime_error("inconsistent trace data size X/Y");
@@ -302,7 +316,7 @@ class plot2d : public Fl_Box {
     }
 
     // get regular callbacks for non-blocking background work
-    void timer_cb() {
+    void cb_timer() {
         size_t ixTr;
         size_t ixPt;
         if (annotator.getHighlightedPoint(ixTr, ixPt)) {
@@ -325,6 +339,11 @@ class plot2d : public Fl_Box {
     double x1 = 2;
     double y0 = 1.23;
     double y1 = 1.24;
+
+    void invalidate(bool needFullRedraw) {
+        this->needFullRedraw = needFullRedraw;
+        redraw();
+    }
 
    protected:
     void drawAxes(const proj<double> p) {
@@ -527,7 +546,7 @@ class plot2d : public Fl_Box {
         }
         titleUpdateWindow->label(ss.str().c_str());
     }
-    allDrawJobs_cl allDrawJobs;
+    allDrawJobs_cl& allDrawJobs;
     annotator_t annotator;
 
     float fontsize = 14;
