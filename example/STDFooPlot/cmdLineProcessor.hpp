@@ -13,7 +13,7 @@ using std::vector, std::string, std::runtime_error;
 // ==============================================================================
 class trace : public aCCb::argObj {
    public:
-    trace() : argObj("-trace") {}
+    trace() : argObj("-trace"), marker("gx1") {}
     bool acceptArg_stateUnset(const string &a) {
         if (std::find(switchArgs.cbegin(), switchArgs.cend(), a) != switchArgs.cend()) {
             // implement switches here
@@ -86,7 +86,7 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
             state = a;
         } else
             return false;
-        return true; // common for most of the above
+        return true;  // common for most of the above
     }
 
     bool acceptArg_stateSet(const string &a) {

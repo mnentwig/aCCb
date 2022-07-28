@@ -93,8 +93,23 @@ class myTestWin {
         tb->setTitle(l.title);
         tb->setXlabel(l.xlabel);
         tb->setYlabel(l.ylabel);
-        if (std::isnan(l.xLimLow) | std::isnan(l.xLimHigh) | std::isnan(l.yLimLow) | std::isnan(l.yLimHigh))
-            tb->autoscale();
+
+        bool needAutoscaleX0 = std::isnan(l.xLimLow);
+        bool needAutoscaleX1 = std::isnan(l.xLimHigh);
+        if (needAutoscaleX0 | needAutoscaleX1) {
+            bool success = tb->autoscaleX(needAutoscaleX0, needAutoscaleX1);
+            if (!success)
+                tb->autoscaleX(true, true);
+        }
+
+        bool needAutoscaleY0 = std::isnan(l.yLimLow);
+        bool needAutoscaleY1 = std::isnan(l.yLimHigh);
+        if (needAutoscaleY0 | needAutoscaleY1) {
+            bool success = tb->autoscaleY(needAutoscaleY0, needAutoscaleY1);
+            if (!success)
+                tb->autoscaleY(true, true);
+        }
+
         tb->setTitleUpdateWindow(window);
 
         // this->menu = new myMenu(800, 0, 400, 200);
@@ -199,7 +214,7 @@ int main2(int argc, const char **argv) {
                          "-trace", "-dataY", "out2.float", "-marker", "g.3",
                          "-trace", "-dataY", "y.txt", "-dataX", "x.txt", "-marker", "wx1", /*"-vertLineY", "-1", "-vertLineY", "1",*/ "-annot", "x.txt",
                          "-trace", "-vertLineX", "-3", "-vertLineX", "3", "-horLineY", "-3", "-horLineY", "3", "-marker", "o.1",
-                         "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel", "-xLimLow", "-200000", "-sync", "b.txt",
+                         "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel", "-xLimHigh", "-200000", "-sync", "b.txt",
                          // "-windowX", "10", "-windowY", "20", "-windowW", "1800", "-windowH", "1000",
                          "-persist", "c.txt"};
 #else
@@ -214,7 +229,7 @@ int main2(int argc, const char **argv) {
             cout << argv[ix] << " ";
         cout << endl;
     }
-    
+
     Fl::visual(FL_RGB);
 
     //* collects command line arguments */
@@ -223,7 +238,7 @@ int main2(int argc, const char **argv) {
     // === parse command line args ===
     for (int ixArg = 1; ixArg < argc; ++ixArg) {
         string a = argv[ixArg];
-        //cout << "parsing " << a << endl;
+        // cout << "parsing " << a << endl;
         if (!l.acceptArg(a))
             throw aCCb::argObjException("unexpected argument '" + a + "'");
     }

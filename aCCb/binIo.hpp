@@ -170,16 +170,24 @@ void vec2file(const string &fname, const vector<T> &vec, const vector<bool> &ind
 }
 
 // === equivalent for .txt ===
-template<class T> vector<T> file2vec_asc(const string fname) {
+template <class T>
+vector<T> file2vec_asc(const string fname) {
     vector<T> r;
     std::ifstream is(fname, std::ifstream::binary);
     if (!is)
         throw runtime_error("failed to open file");
     string line;
+    size_t lineBase1 = 1;
     while (std::getline(is, line)) {
         T val;
-        if (!aCCb::str2num(line, val)) throw runtime_error("failed to parse number");
+        if (!aCCb::str2num(line, val)) {
+            const size_t maxLen = 32;
+            if (line.size() > maxLen)
+                line = line.substr(0, maxLen) + "...";
+            throw runtime_error(string("File '") + fname + "' line " + std::to_string(lineBase1) + ": failed to parse number from '" + line + "'");
+        }
         r.push_back(val);
+        ++lineBase1;
     }
     return r;
 }

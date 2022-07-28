@@ -188,7 +188,14 @@ class plot2d : public Fl_Box {
 
         int handleKeyDown(int key) {
             if (key == 'a') {
-                parent->autoscale();
+                if (Fl::event_state(FL_SHIFT))
+                    parent->autoscaleX(true, true);
+                else if (Fl::event_state(FL_CTRL))
+                    parent->autoscaleY(true, true);
+                else {
+                    parent->autoscaleX(true, true);
+                    parent->autoscaleY(true, true);
+                }
                 parent->invalidate(/*full redraw*/ true);
                 return true;
             }
@@ -289,29 +296,62 @@ class plot2d : public Fl_Box {
         ylabel = v;
     }
 
-    void xxxxxxxxxxxxxxxxxxxxxaddTrace(const std::vector<float>* dataX, const std::vector<float>* dataY, const std::vector<string>* annot, const marker_cl* marker, vector<float> vertLineX, vector<float> horLineY) {
-        if ((dataX != NULL) && (dataY != NULL))
-            if (dataX->size() != dataY->size())
-                throw std::runtime_error("inconsistent trace data size X/Y");
-        allDrawJobs.addTrace(drawJob(dataX, dataY, annot, marker, vertLineX, horLineY));
-    }
+    // autoscales given limits. Returns 1 if input was meaningful
+    bool autoscaleX(bool scaleX0, bool scaleX1) {
+        if (false == (scaleX0 | scaleX1))
+            return true;  // nothing to do
 
-    void autoscale() {
         const double inf = std::numeric_limits<float>::infinity();
+        // autoscale: extend inversed range to fit each item
         float x0f = inf;
         float x1f = -inf;
+
+        allDrawJobs.updateAutoscaleX(x0f, x1f);
+
+        // convert infinity to "large" number
+        const float INFTY = 1e16;  // fallback: "10 tera"
+        if (std::isinf(x0f)) x0f = -INFTY;
+        if (std::isinf(x1f)) x1f = INFTY;
+
+        // apply result, if meaningful
+        const float eps = 1e-16;  // fallback: "0.1 femto"
+        bool validX = (scaleX1 ? x1f : x1) - (scaleX0 ? x0f : x0) > eps;
+        if (scaleX0 && validX) x0 = x0f;
+        if (scaleX1 && validX) x1 = x1f;
+
+        // check success
+        if (!validX)
+            if (scaleX0 or scaleX1) return false;  // unable to scale X
+        return true;
+    }
+
+    // autoscales given limits. Returns 1 if input was meaningful
+    bool autoscaleY(bool scaleY0, bool scaleY1) {
+        if (false == (scaleY0 | scaleY1))
+            return true;  // nothing to do
+
+        const double inf = std::numeric_limits<float>::infinity();
+        // autoscale: extend inversed range to fit each item
         float y0f = inf;
         float y1f = -inf;
 
-        allDrawJobs.updateAutoscale(x0f, y0f, x1f, y1f);
-        if (std::isinf(x0f)) x0 = -1;
-        if (std::isinf(x1f)) x1 = 1;
-        if (std::isinf(y0f)) y0 = -1;
-        if (std::isinf(y1f)) y1 = 1;
-        x0 = x0f;
-        y0 = y0f;
-        x1 = x1f;
-        y1 = y1f;
+        allDrawJobs.updateAutoscaleY(y0f, y1f);
+
+        // convert infinity to "large" number
+        const float INFTY = 1e16;  // fallback: "10 tera"
+        if (std::isinf(y0f)) y0f = -INFTY;
+        if (std::isinf(y1f)) y1f = INFTY;
+
+        // apply result, if meaningful
+        const float eps = 1e-16;  // fallback: "0.1 femto"
+        bool validY = (scaleY1 ? y1f : y1) - (scaleY0 ? y0f : y0) > eps;
+        if (scaleY0 && validY) y0 = y0f;
+        if (scaleY1 && validY) y1 = y1f;
+
+        // check success
+        if (!validY)
+            if (scaleY0 or scaleY1) return false;  // unable to scale Y
+        return true;
     }
 
     // get regular callbacks for non-blocking background work
@@ -475,12 +515,12 @@ class plot2d : public Fl_Box {
         // === plot ===
         fl_push_clip(screenX, screenY, width, height);
         {
-            //auto begin = std::chrono::high_resolution_clock::now();
+            // auto begin = std::chrono::high_resolution_clock::now();
 
             allDrawJobs.draw(p);
-            //auto end = std::chrono::high_resolution_clock::now();
-            //auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-            //cout << "drawJobs:\t" << 1e-6 * (double)duration << " ms" << endl;
+            // auto end = std::chrono::high_resolution_clock::now();
+            // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            // cout << "drawJobs:\t" << 1e-6 * (double)duration << " ms" << endl;
         }
         fl_pop_clip();
 

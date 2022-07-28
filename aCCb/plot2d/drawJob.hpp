@@ -169,15 +169,9 @@ class drawJob {
     }
 
     /** given limits are extended to include data */
-    void updateAutoscale(float& x0, float& x1, float& y0, float& y1) const {
+    void updateAutoscaleX(float& x0, float& x1) const {
         if (pDataY) {
-            for (float y : *pDataY) {
-                if (!std::isinf(y) && !std::isnan(y)) {
-                    y0 = std::min(y0, y);
-                    y1 = std::max(y1, y);
-                }
-            }
-            if (pDataX == NULL) {
+            if (pDataX == NULL) {  // xdata exists only combined with Ydata (otherwise, the trade holds just lines)
                 x0 = std::min(x0, 1.0f);
                 x1 = std::max(x1, (float)(pDataY->size() + 1));
             } else {
@@ -189,13 +183,25 @@ class drawJob {
                 }
             }
         }
-        for (auto y : horLineY) {
-            y0 = std::min(y0, y);
-            y1 = std::max(y1, y);
-        }
         for (auto x : vertLineX) {
             x0 = std::min(x0, x);
             x1 = std::max(x1, x);
+        }
+    }
+
+    /** given limits are extended to include data */
+    void updateAutoscaleY(float& y0, float& y1) const {
+        if (pDataY) {
+            for (float y : *pDataY) {
+                if (!std::isinf(y) && !std::isnan(y)) {
+                    y0 = std::min(y0, y);
+                    y1 = std::max(y1, y);
+                }
+            }
+        }
+        for (auto y : horLineY) {
+            y0 = std::min(y0, y);
+            y1 = std::max(y1, y);
         }
     }
 
@@ -322,9 +328,14 @@ class allDrawJobs_cl {
         this->drawJobs.push_back(j);
     }
 
-    void updateAutoscale(float& x0, float& y0, float& x1, float& y1) const {
+    void updateAutoscaleX(float& x0, float& x1) const {
         for (auto j : drawJobs)
-            j.updateAutoscale(x0, x1, y0, y1);
+            j.updateAutoscaleX(x0, x1);
+    }
+
+    void updateAutoscaleY(float& y0, float& y1) const {
+        for (auto j : drawJobs)
+            j.updateAutoscaleY(y0, y1);
     }
 
     // attempts to locate the on-screen data point closest to xData/yData. Returns true if successful, with trace in ixTrace, point in ixPt.
