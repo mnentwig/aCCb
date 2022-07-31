@@ -16,6 +16,7 @@
 #include "STDFooPlot/cmdLineProcessor.hpp"
 #include "STDFooPlot/markerMan.hpp"
 #include "STDFooPlot/traceMan.hpp"
+#include "STDFooPlot/testcase.hpp"
 using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::map, std::pair, std::cerr;
 
 #include <signal.h>
@@ -209,7 +210,7 @@ void usage() {
 
 static myTestWin *windowForSigIntHandler;
 int main2(int argc, const char **argv) {
-#if 1
+#if 0
     const char *tmp[] = {"execname",
                          "-trace", "-dataY", "out2.float", "-marker", "g.3",
                          "-trace", "-dataY", "y.txt", "-dataX", "x.txt", "-marker", "wx1", /*"-vertLineY", "-1", "-vertLineY", "1",*/ "-annot", "x.txt",
@@ -217,9 +218,12 @@ int main2(int argc, const char **argv) {
                          "-title", "this is the title!", "-xlabel", "the xlabel", "-ylabel", "and the ylabel", "-xLimHigh", "-200000", "-sync", "b.txt",
                          // "-windowX", "10", "-windowY", "20", "-windowW", "1800", "-windowH", "1000",
                          "-persist", "c.txt"};
-#else
+#elif 0
     const char *tmp[] = {"execname",
                          "-trace", "-marker", "g.3", "-dataX", "x.txt", "-dataY", "y.txt", "-sync", "b.txt", "-persist", "c.txt"};
+#else
+    const char *tmp[] = {"execname",
+                         "-testcase", "5"};
 #endif
     if (argc < 2) {
         cout << "*** debug cmd line args ***" << endl;
@@ -237,7 +241,7 @@ int main2(int argc, const char **argv) {
 
     // === parse command line args ===
     for (int ixArg = 1; ixArg < argc; ++ixArg) {
-        string a = argv[ixArg];
+        const string a = argv[ixArg];
         // cout << "parsing " << a << endl;
         if (!l.acceptArg(a))
             throw aCCb::argObjException("unexpected argument '" + a + "'");
@@ -259,6 +263,10 @@ int main2(int argc, const char **argv) {
     }
 
     l.close();
+
+    // testcase replaces whole arguments set
+    if (l.testcase >= 0)
+        l = testcase(l.testcase);
 
     // === variables below must remain in scope until shutdown ===
 

@@ -550,6 +550,7 @@ class plot2d : public Fl_Box {
         }
 
         if (highlightValid) {
+            fl_push_clip(screenX, screenY, width, height);
             float x, y;
             allDrawJobs.getPt(highlightIxTrace, highlightIxPt, x, y);
             int xs = pd.projX(x);
@@ -559,6 +560,7 @@ class plot2d : public Fl_Box {
             fl_line(xs - d, ys - d, xs + d, ys + d);
             fl_color(FL_BLUE);
             fl_line(xs - d, ys + d, xs + d, ys - d);
+            fl_pop_clip();
         }
     }
 

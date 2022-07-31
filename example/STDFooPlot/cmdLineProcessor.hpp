@@ -1,3 +1,4 @@
+#pragma once
 #include <deque>
 #include <filesystem>
 #include <stdexcept>
@@ -116,14 +117,14 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
             syncfile = a;
         } else if (state == "-persist") {
             persistfile = a;
+        } else if (state == "-testcase") {
+            if (!aCCb::str2num(a, testcase)) throw aoException(state + ": failed to parse number ('" + a + "')");
         } else
             return argObj::acceptArg_stateSet(a);  // throws error
         state = "";
         return true;
     }
 
-    const vector<string> stateArgs{"-title", "-xlabel", "-ylabel", "-xLimLow", "-xLimHigh", "-yLimLow", "-yLimHigh", "-sync", "-persist", "-windowX", "-windowY", "-windowW", "-windowH"};
-    const vector<string> switchArgs{"-trace", "-help"};
     string title;
     string xlabel;
     string ylabel;
@@ -139,4 +140,9 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
     string persistfile;
     std::deque<trace> traces;
     bool showUsage = false;
+    int testcase = -1;
+
+   protected:
+    vector<string> stateArgs{"-title", "-xlabel", "-ylabel", "-xLimLow", "-xLimHigh", "-yLimLow", "-yLimHigh", "-sync", "-persist", "-windowX", "-windowY", "-windowW", "-windowH", "-testcase"};
+    vector<string> switchArgs{"-trace", "-help"};
 };
