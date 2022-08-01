@@ -32,29 +32,29 @@ class axisTics {
 
     //* given a spacing, calculate the absolute tic values */
     static vector<double> getTicVals(double startVal, double endVal, double ticDelta) {
-        assert(ticDelta != 0);
-        if (startVal < endVal)
-            ticDelta = std::abs(ticDelta);
-        else
-            ticDelta = -std::abs(ticDelta);
-        double gridVal = startVal;
-        gridVal /= ticDelta;
-        gridVal = std::floor(gridVal);
-        gridVal *= ticDelta;
-        gridVal -= 2 * ticDelta;  // take one step back as floor may round in the wrong direction, depending on sign
         vector<double> r;
-        while (gridVal <= endVal + ticDelta / 2.0) {
-            // note: don't make the interval wider, otherwise an axis looks like a tic when it's not.
-            if (isInRange(startVal - 0.001 * ticDelta, endVal + 0.001 * ticDelta, gridVal)) {
-                // === add gridVal as a tic division ===
+        if (ticDelta == 0) {
+            r.push_back(0);
+            return r;
+        }
 
-                // gridVal is ideally an integer multiple of ticDelta, in reality with roundoff error
-                if (std::fabs(gridVal) < 0.01 * std::fabs(ticDelta))
-                    r.push_back(0);  // cull numerical error around 0
+        assert(startVal < endVal);
+
+        // quantize to grid
+        int64_t quantStart = std::floor(startVal / ticDelta);
+        int64_t quantEnd = std::ceil(endVal / ticDelta);
+        assert((quantEnd - quantStart < 100) && "requesting excessive number of linear axis tics");
+
+        for (int64_t quant = quantStart; quant <= quantEnd; ++quant) {
+            double tic = ticDelta * quant;
+            // note: don't make the interval wider, otherwise an axis looks like a tic when it's not.
+            if ((tic >= startVal - 0.001 * ticDelta) && (tic <= endVal + 0.001 * ticDelta)) {
+                // === add gridVal as a tic division ===
+                if (!quant)
+                    r.push_back(0);  // avoid roundoff error at origin
                 else
-                    r.push_back(gridVal);
+                    r.push_back(tic);
             }
-            gridVal += ticDelta;
         }
         return r;
     }
