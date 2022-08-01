@@ -46,8 +46,10 @@ class axisTics {
         while (gridVal <= endVal + ticDelta / 2.0) {
             // note: don't make the interval wider, otherwise an axis looks like a tic when it's not.
             if (isInRange(startVal - 0.001 * ticDelta, endVal + 0.001 * ticDelta, gridVal)) {
-                // add gridVal as a tic division
-                if ((std::fabs(gridVal) < 1e-16) && (std::fabs(ticDelta) > 1e-14))
+                // === add gridVal as a tic division ===
+
+                // gridVal is ideally an integer multiple of ticDelta, in reality with roundoff error
+                if (std::fabs(gridVal) < 0.01 * std::fabs(ticDelta))
                     r.push_back(0);  // cull numerical error around 0
                 else
                     r.push_back(gridVal);

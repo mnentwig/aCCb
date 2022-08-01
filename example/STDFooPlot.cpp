@@ -15,8 +15,8 @@
 #include "../aCCb/widget.hpp"
 #include "STDFooPlot/cmdLineProcessor.hpp"
 #include "STDFooPlot/markerMan.hpp"
-#include "STDFooPlot/traceMan.hpp"
 #include "STDFooPlot/testcase.hpp"
+#include "STDFooPlot/traceMan.hpp"
 using std::string, std::vector, std::array, std::cout, std::endl, std::runtime_error, std::map, std::pair, std::cerr;
 
 #include <signal.h>
@@ -77,6 +77,7 @@ class myTestWin {
             areaW = dim / 2;
             areaH = dim / 2;
         }
+        window->size(areaW, areaH);  // constructor arg is unreliable
         window->callback(cb_closeWrapper, (void *)this);
         window->color(FL_BLACK);
 
@@ -208,8 +209,33 @@ void usage() {
     cerr << "    shapes in place of '.1': .1 .2 .3 +1 +2 x1 x2 ('1' can be omitted')" << endl;
 }
 
+#if 0
+class ww : public Fl_Double_Window {
+   public:
+    ww(int w, int h)  : Fl_Double_Window(w, h) {
+    }
+    void resize(int x, int y, int w, int h) {
+        cout << "resize:\t" << w << "\t" << h << endl;
+        Fl_Double_Window::resize(x, y, w, h);
+    }
+};
+#endif
+
 static myTestWin *windowForSigIntHandler;
 int main2(int argc, const char **argv) {
+#if 0
+    ww *window = new ww(111, 112);
+    window->size(113, 114);
+    cout << window->w() << "\t" << window->h() << "\t" << window->decorated_w() << "\t" << window->decorated_h() << endl;
+    window->show();
+    cout << window->w() << "\t" << window->h() << "\t" << window->decorated_w() << "\t" << window->decorated_h() << endl;
+    window->size(113, 114);
+    cout << window->w() << "\t" << window->h() << "\t" << window->decorated_w() << "\t" << window->decorated_h() << endl;
+    Fl::run();
+    cout << window->w() << "\t" << window->h() << "\t" << window->decorated_w() << "\t" << window->decorated_h() << endl;
+    window->hide();
+#endif
+#if 0
 #if 0
     const char *tmp[] = {"execname",
                          "-trace", "-dataY", "out2.float", "-marker", "g.3",
@@ -233,6 +259,12 @@ int main2(int argc, const char **argv) {
             cout << argv[ix] << " ";
         cout << endl;
     }
+#else
+    if (argc < 2) {
+        usage();
+        exit(0);
+    }
+#endif
 
     Fl::visual(FL_RGB);
 

@@ -99,6 +99,7 @@ class plot2d : public Fl_Box {
             bool mouseMoved;
             int mouseWheel;
         } mouseState;
+
         int handle(int event) {
             switch (event) {
                 case FL_FOCUS:    // must ack to receive keypress events
@@ -167,20 +168,28 @@ class plot2d : public Fl_Box {
                 double scale = 1.3;
                 if (d < 0)
                     scale = 1 / scale;
+
+                bool scaleYflag = !Fl::event_state(FL_SHIFT);
+                bool scaleXflag = !Fl::event_state(FL_CTRL);
+
                 double x0, y0, x1, y1;
                 parent->getViewArea(x0, y0, x1, y1);
-                double deltaX0 = x0 - dataX;
-                double deltaX1 = x1 - dataX;
-                double deltaY0 = y0 - dataY;
-                double deltaY1 = y1 - dataY;
-                deltaX0 *= scale;
-                deltaY0 *= scale;
-                deltaX1 *= scale;
-                deltaY1 *= scale;
-                x0 = deltaX0 + dataX;
-                y0 = deltaY0 + dataY;
-                x1 = deltaX1 + dataX;
-                y1 = deltaY1 + dataY;
+                if (scaleXflag) {
+                    double deltaX0 = x0 - dataX;
+                    double deltaX1 = x1 - dataX;
+                    deltaX0 *= scale;
+                    deltaX1 *= scale;
+                    x0 = deltaX0 + dataX;
+                    x1 = deltaX1 + dataX;
+                }
+                if (scaleYflag) {
+                    double deltaY0 = y0 - dataY;
+                    double deltaY1 = y1 - dataY;
+                    deltaY0 *= scale;
+                    deltaY1 *= scale;
+                    y0 = deltaY0 + dataY;
+                    y1 = deltaY1 + dataY;
+                }
                 parent->setViewArea(x0, y0, x1, y1);
             }
             return 1;
