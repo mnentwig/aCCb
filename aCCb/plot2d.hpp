@@ -367,19 +367,9 @@ class plot2d : public Fl_Box {
     void cb_timer() {
         size_t ixTr;
         size_t ixPt;
-        if (annotator.getHighlightedPoint(ixTr, ixPt)) {
-            if ((highlightIxPt != ixPt) || (highlightIxTrace != ixTr) || (!highlightValid)) {
-                highlightIxPt = ixPt;
-                highlightIxTrace = ixTr;
-                highlightValid = true;
-                redraw();                                 // redraw only when changed
-                updateCursorHighlightAnnotationStatus();  // second update on highlighted parts result
-            }
-        }
-    }
-
-    void setTitleUpdateWindow(Fl_Window* w) {
-        titleUpdateWindow = w;
+        if (annotator.getHighlightedPoint(ixTr, ixPt))
+            if (this->cursorHighlight.setHighlight(ixTr, ixPt))
+                redraw();  // redraw on change (reuse bitmap)
     }
 
     /** visible area */
@@ -558,10 +548,11 @@ class plot2d : public Fl_Box {
             fl_rect(std::min(xs0, xs1), std::min(ys0, ys1), std::abs(xs1 - xs0), std::abs(ys1 - ys0));
         }
 
-        if (highlightValid) {
+        // === draw highlighted point ===
+        if (cursorHighlight.highlightValid) {
             fl_push_clip(screenX, screenY, width, height);
             float x, y;
-            allDrawJobs.getPt(highlightIxTrace, highlightIxPt, x, y);
+            allDrawJobs.getPt(cursorHighlight.highlightIxTrace, cursorHighlight.highlightIxPt, x, y);
             int xs = pd.projX(x);
             int ys = pd.projY(y);
             const int d = 10;
@@ -571,46 +562,87 @@ class plot2d : public Fl_Box {
             fl_line(xs - d, ys + d, xs + d, ys - d);
             fl_pop_clip();
         }
+
+        // === draw annotation ===
+        if (cursorHighlight.annot.size() > 0) {
+            fl_color(FL_GREEN);
+            int x = p.getScreenX0();
+            int y = p.getScreenY0() - cursorHighlight.annot.size() * fontsize;
+            for (size_t ix = 0; ix < cursorHighlight.annot.size(); ++ix) {
+                vector<array<float, 4>> geom = aCCb::vectorFont::renderText(cursorHighlight.annot[ix].c_str());
+                fl_color(FL_BLACK);
+                aCCbWidget::renderText(geom, fontsize, x - 1, y - 1);
+                aCCbWidget::renderText(geom, fontsize, x - 1, y + 1);
+                aCCbWidget::renderText(geom, fontsize, x + 1, y - 1);
+                aCCbWidget::renderText(geom, fontsize, x + 1, y + 1);
+                fl_color(FL_GREEN);
+                aCCbWidget::renderText(geom, fontsize, x, y);
+                y += fontsize;
+            }
+        }
     }
 
     // event manager calls this for cursor, annotation search update
     void notifyCursorMove(double dataX, double dataY) {
         proj<float> p = projDataToScreen<float>();
         annotator.notifyCursorChange(dataX, dataY, p);
-        cursorX = dataX;
-        cursorY = dataY;
-        updateCursorHighlightAnnotationStatus();  // first update on cursor move
+        cursorHighlight.notifyCursorChange(dataX, dataY, allDrawJobs);
     }
 
-    void updateCursorHighlightAnnotationStatus() {
-        if (!titleUpdateWindow) return;
-        std::stringstream ss;
-        ss << "cur:[" << cursorX << ", " << cursorY << "]";
-        if (highlightValid) {
-            float x, y;
-            allDrawJobs.getPt(highlightIxTrace, highlightIxPt, x, y);
-            ss << " pt:[" << x << ", " << y << "] ";
-            string a;
-            if (allDrawJobs.getAnnotation(highlightIxTrace, highlightIxPt, /*out*/ a))
-                ss << " '" << a << "' ";
-        }
-        titleUpdateWindow->label(ss.str().c_str());
-    }
     allDrawJobs_cl& allDrawJobs;
     annotator_t annotator;
 
+   public:
     float fontsize = 14;
     float titleFontsize = 18;
     float axisLabelFontsize = fontsize;
+
+   protected:
     const int minorTicLength = 3;
     const int majorTicLength = 7;
 
-    double cursorX = std::numeric_limits<double>::quiet_NaN();
-    double cursorY = std::numeric_limits<double>::quiet_NaN();
-    size_t highlightIxTrace;
-    size_t highlightIxPt;
-    bool highlightValid = false;
-    Fl_Window* titleUpdateWindow = NULL;
+    class cursorHighlight_t {
+       public:
+        // set new point to highlight. Returns true if changed (redraw required)
+        bool setHighlight(size_t highlightIxTrace, size_t highlightIxPt) {
+            bool r = (this->highlightIxTrace != highlightIxTrace) || (this->highlightIxPt |= highlightIxPt);
+            this->highlightIxTrace = highlightIxTrace;
+            this->highlightIxPt = highlightIxPt;
+            this->highlightValid = true;
+            return r;
+        }
+
+        void notifyCursorChange(double cursorX, double cursorY, allDrawJobs_cl& adj) {
+            this->cursorX = cursorX;
+            this->cursorY = cursorY;
+
+            annot.clear();
+            std::stringstream ss;
+            ss << "cur: [" << cursorX << ", " << cursorY << "]";
+            annot.push_back(ss.str().c_str());
+
+            if (highlightValid) {
+                float x, y;
+                adj.getPt(highlightIxTrace, highlightIxPt, x, y);
+                ss = std::stringstream();
+                ss << " pt:[" << x << ", " << y << "] ";
+                annot.push_back(ss.str().c_str());
+
+                string a;
+                if (adj.getAnnotation(highlightIxTrace, highlightIxPt, /*out*/ a)) {
+                    ss = std::stringstream();
+                    ss << " '" << a << "' ";
+                    annot.push_back(ss.str().c_str());
+                }
+            }
+        }
+        double cursorX = std::numeric_limits<double>::quiet_NaN();
+        double cursorY = std::numeric_limits<double>::quiet_NaN();
+        size_t highlightIxTrace;
+        size_t highlightIxPt;
+        bool highlightValid = false;
+        vector<string> annot;
+    } cursorHighlight;
 
     //* if false, use cached bitmap. Otherwise redraw from data. */
     bool needFullRedraw = true;

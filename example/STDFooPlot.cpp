@@ -93,6 +93,11 @@ class myTestWin {
             tb->y1 = l.yLimHigh;
 
         tb->setTitle(l.title);
+        tb->fontsize = l.fontsize;
+        cout << l.fontsize << endl;
+        tb->axisLabelFontsize = l.fontsize;
+        tb->titleFontsize = l.fontsize*1.5;
+        window->label(l.title.c_str());
         tb->setXlabel(l.xlabel);
         tb->setYlabel(l.ylabel);
 
@@ -111,8 +116,6 @@ class myTestWin {
             if (!success)
                 tb->autoscaleY(true, true);
         }
-
-        tb->setTitleUpdateWindow(window);
 
         // this->menu = new myMenu(800, 0, 400, 200);
         // menu->box(Fl_Boxtype::FL_BORDER_FRAME);

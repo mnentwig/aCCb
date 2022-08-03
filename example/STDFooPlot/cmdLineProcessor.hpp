@@ -113,6 +113,8 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
             if (!aCCb::str2num(a, windowW)) throw aoException(state + ": failed to parse number ('" + a + "')");
         } else if (state == "-windowH") {
             if (!aCCb::str2num(a, windowH)) throw aoException(state + ": failed to parse number ('" + a + "')");
+        } else if (state == "-fontsize") { 
+            if (!aCCb::str2num(a, fontsize)) throw aoException(state + ": failed to parse number ('" + a + "')");
         } else if (state == "-sync") {
             syncfile = a;
         } else if (state == "-persist") {
@@ -136,6 +138,7 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
     int windowY = -1;
     int windowW = -1;
     int windowH = -1;
+    int fontsize = 13;
     string syncfile;
     string persistfile;
     std::deque<trace> traces;
@@ -143,6 +146,6 @@ class fooplotCmdLineArgRoot : public aCCb::argObj {
     int testcase = -1;
 
    protected:
-    vector<string> stateArgs{"-title", "-xlabel", "-ylabel", "-xLimLow", "-xLimHigh", "-yLimLow", "-yLimHigh", "-sync", "-persist", "-windowX", "-windowY", "-windowW", "-windowH", "-testcase"};
+    vector<string> stateArgs{"-title", "-xlabel", "-ylabel", "-xLimLow", "-xLimHigh", "-yLimLow", "-yLimHigh", "-sync", "-persist", "-windowX", "-windowY", "-windowW", "-windowH", "-fontsize", "-testcase"};
     vector<string> switchArgs{"-trace", "-help"};
 };

@@ -121,6 +121,10 @@ vector<string> testcase0(int tcNum) {
     r.push_back("g.2");
     r.push_back("-title");
     r.push_back(t + " test");
+    if (tcNum > 4) {
+        r.push_back("-fontsize");
+        r.push_back(std::to_string(3 * tcNum));
+    }
     return r;
 }
 
