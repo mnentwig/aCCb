@@ -196,17 +196,21 @@ class plot2d : public Fl_Box {
         }
 
         int handleKeyDown(int key) {
-            if (key == 'a') {
-                if (Fl::event_state(FL_SHIFT))
-                    parent->autoscaleX(true, true);
-                else if (Fl::event_state(FL_CTRL))
-                    parent->autoscaleY(true, true);
-                else {
-                    parent->autoscaleX(true, true);
-                    parent->autoscaleY(true, true);
-                }
-                parent->invalidate(/*full redraw*/ true);
-                return true;
+            switch (key) {
+                case 'a':
+                    if (Fl::event_state(FL_SHIFT))
+                        parent->autoscaleX(true, true);
+                    else if (Fl::event_state(FL_CTRL))
+                        parent->autoscaleY(true, true);
+                    else {
+                        parent->autoscaleX(true, true);
+                        parent->autoscaleY(true, true);
+                    }
+                    parent->invalidate(/*full redraw*/ true);
+                    return true;
+                case 'm':
+                    parent->toggleCursor();
+                    return true;
             }
             return false;
         }
@@ -383,6 +387,11 @@ class plot2d : public Fl_Box {
         redraw();
     }
 
+    void toggleCursor() {
+        cursorFlag = !cursorFlag;
+        invalidate(/*don't need full redraw*/ false);
+    }
+
    protected:
     void drawAxes(const proj<double> p) {
         drawTitle(p);
@@ -549,7 +558,7 @@ class plot2d : public Fl_Box {
         }
 
         // === draw highlighted point ===
-        if (cursorHighlight.highlightValid) {
+        if (cursorFlag && cursorHighlight.highlightValid) {
             fl_push_clip(screenX, screenY, width, height);
             float x, y;
             allDrawJobs.getPt(cursorHighlight.highlightIxTrace, cursorHighlight.highlightIxPt, x, y);
@@ -564,7 +573,7 @@ class plot2d : public Fl_Box {
         }
 
         // === draw annotation ===
-        if (cursorHighlight.annot.size() > 0) {
+        if (cursorFlag && (cursorHighlight.annot.size() > 0)) {
             fl_color(FL_GREEN);
             int x = p.getScreenX0();
             int y = p.getScreenY0() - cursorHighlight.annot.size() * fontsize;
@@ -600,6 +609,7 @@ class plot2d : public Fl_Box {
    protected:
     const int minorTicLength = 3;
     const int majorTicLength = 7;
+    bool cursorFlag = false;
 
     class cursorHighlight_t {
        public:

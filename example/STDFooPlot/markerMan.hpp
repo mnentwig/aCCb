@@ -19,8 +19,8 @@ class markerMan_cl {
             {'g', 0xFF00FF00},
             {'b', 0xFFFF0000},
             {'c', 0xFFFFFF00},
-            {'m', 0xFF00FFFF},
-            {'y', 0xFFFF00FF},
+            {'m', 0xFFFF00FF},
+            {'y', 0xFF00FFFF},
             {'a', 0xFF888888},
             {'o', 0xFF008cFF},  // orange
             {'w', 0xFFFFFFFF}};
