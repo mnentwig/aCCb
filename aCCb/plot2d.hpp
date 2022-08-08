@@ -408,7 +408,7 @@ class plot2d : public Fl_Box {
             aCCbWidget::line(p.projX(ticX), p.projY(y0), p.projX(ticX), p.projY(y0) - minorTicLength);
 
         // === draw x axis major tics and numbers ===
-        vector<string> xAxisTicsMajorStr = axisTics::formatTicVals(xAxisTicsMajor);
+        vector<string> xAxisTicsMajorStr = axisTics::formatTicVals(xAxisTicsMajor, xAxisDeltaMajor);
         for (size_t ix = 0; ix < xAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             double ticX = xAxisTicsMajor[ix];
 
@@ -435,7 +435,7 @@ class plot2d : public Fl_Box {
             aCCbWidget::line(p.projX(x0), p.projY(ticY), p.projX(x0) + minorTicLength, p.projY(ticY));
 
         // === draw x axis major tics and numbers ===
-        vector<string> yAxisTicsMajorStr = axisTics::formatTicVals(yAxisTicsMajor);
+        vector<string> yAxisTicsMajorStr = axisTics::formatTicVals(yAxisTicsMajor, yAxisDeltaMajor);
         for (size_t ix = 0; ix < yAxisTicsMajor.size(); ++ix) {  // todo draw major tics after data
             double ticY = yAxisTicsMajor[ix];
 

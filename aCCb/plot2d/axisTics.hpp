@@ -3,9 +3,8 @@
 #include <cmath>  // abs
 #include <sstream>
 #include <string>
-#include <unordered_set>
 #include <vector>
-using std::vector, std::unordered_set, std::string;
+using std::vector, std::string;
 //* decides where to place the axis tics, formats the text labels */
 class axisTics {
    public:
@@ -59,34 +58,27 @@ class axisTics {
         return r;
     }
 
-    static vector<string> formatTicVals(const vector<double> ticVals) {
-        vector<string> ticValsStr;
-        for (int precision = -1; precision < 12; ++precision) {
-            ticValsStr = formatTicVals(ticVals, precision);
-            unordered_set checkDuplicates(ticValsStr.begin(), ticValsStr.end());
-            if (checkDuplicates.size() == ticValsStr.size())
-                break;  // labels are unique
+    static vector<string> formatTicVals(const vector<double>& ticVals, double ticDelta) {
+        size_t precision = 0;
+        while (precision < 18) {
+            if (ticDelta > 0.9999)  // 1, 2 or 5
+                break;
+            ++precision;
+            ticDelta *= 10;
         }
-        return ticValsStr;
-    }
 
-   protected:
-    static vector<string> formatTicVals(const vector<double> vals, int precision) {
-        std::stringstream ss;
-        if (precision < 0) {
-            ss << std::fixed;
-            ss.precision(0);
-        } else
-            ss.precision(precision);
         vector<string> r;
-        for (double v : vals) {
-            ss.str(std::string());  // clear
+        for (double v : ticVals) {
+            std::stringstream ss;
+            ss << std::fixed;
+            ss.precision(precision);
             ss << v;
             r.push_back(ss.str());
         }
         return r;
     }
 
+   protected:
     //* test whether val lies within lim1..lim2 range, regardless of order (endpoints inclusive) */
     static inline bool isInRange(double lim1, double lim2, double val) {
         return ((val >= lim1) && (val <= lim2)) || ((val >= lim2) && (val <= lim1));
