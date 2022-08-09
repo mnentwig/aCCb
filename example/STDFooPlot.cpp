@@ -96,7 +96,7 @@ class myTestWin {
         tb->fontsize = l.fontsize;
         cout << l.fontsize << endl;
         tb->axisLabelFontsize = l.fontsize;
-        tb->titleFontsize = l.fontsize*1.5;
+        tb->titleFontsize = l.fontsize * 1.5;
         window->label(l.title.c_str());
         tb->setXlabel(l.xlabel);
         tb->setYlabel(l.ylabel);
@@ -149,14 +149,20 @@ class myTestWin {
         if (syncfile.isModified())
             cb_close();  // all windows are hidden => Fl::run() returns
         else
-            Fl::repeat_timeout(0.02, cb_timerWrapper, (void *)this);
+            Fl::repeat_timeout(0.5, cb_timerWrapper, (void *)this);
 
         if (persistfile != "") {
-            std::ofstream s(persistfile);
-            s << "-windowX " << window->x()
-              << " -windowY " << window->y()
-              << " -windowW " << std::max(window->w(), 300)
-              << " -windowH " << std::max(window->h(), 300);
+            std::stringstream ss;
+            ss << "-windowX " << window->x()
+               << " -windowY " << window->y()
+               << " -windowW " << std::max(window->w(), 300)
+               << " -windowH " << std::max(window->h(), 300);
+            const string newContents = ss.str();
+            if (newContents != persistFileContents) {
+                persistFileContents = newContents;
+                std::ofstream s(persistfile);
+                s << persistFileContents;
+            }
         }
     }
 
@@ -175,6 +181,7 @@ class myTestWin {
     Fl_Double_Window *window;
     syncFile_t syncfile;
     string persistfile;
+    string persistFileContents;
 };
 
 //* returns file contents split by whitespace */
