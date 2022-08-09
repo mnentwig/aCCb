@@ -503,7 +503,7 @@ class plot2d : public Fl_Box {
 
         // === try to reload the cached bitmap ===
         if (!this->needFullRedraw)
-            if (cachedImage.restore(screenX, screenY, width, height))
+            if (cachedImage.restore(x(), y(), w(), h()))
                 goto skipDataDrawing;
 
         // === background ===
@@ -537,7 +537,7 @@ class plot2d : public Fl_Box {
         {
             // auto begin = std::chrono::high_resolution_clock::now();
 
-            cachedImage.capture(screenX, screenY, width, height);
+            cachedImage.capture(x(), y(), w(), h());
             // auto end = std::chrono::high_resolution_clock::now();
             // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
             // cout << "cache:\t" << 1e-6 * (double)duration << " ms" << endl;
